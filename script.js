@@ -28,12 +28,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('[INIT] Firebase 초기화 완료');
 
+    // 허용된 이메일 목록
+    const allowedEmails = [
+        'ahnhj1996@naver.com'
+        // 추가로 허용할 이메일이 있으면 여기에 추가
+    ];
+
     // 인증 상태 확인 - 단 한 번만 처리
     const unsubscribe = auth.onAuthStateChanged(user => {
         console.log('[AUTH] 인증 상태 변경:', user ? user.email : '로그인 안 됨');
 
         if (!user) {
             console.log('[AUTH] 로그인 필요 - login.html로 이동');
+            window.location.replace('login.html');
+            return;
+        }
+
+        // 허용된 이메일인지 확인
+        if (!allowedEmails.includes(user.email)) {
+            console.log('[AUTH] 접근 권한 없음:', user.email);
+            alert('접근 권한이 없습니다. 관리자에게 문의하세요.');
+            auth.signOut();
             window.location.replace('login.html');
             return;
         }
