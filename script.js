@@ -13,64 +13,64 @@ let trendChart = null;
 // 현재 사용자
 let currentUser = null;
 
-// Firebase 리스너
-let assetsListener = null;
-let historyListener = null;
+// 초기화 완료 플래그
+let initialized = false;
 
-// 리다이렉트 중복 방지 플래그 (메인 페이지용)
-let mainPageRedirecting = false;
-let mainPageInitialized = false;
-
-// 초기화
+// 페이지 로드 시 단 한 번만 실행
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[DEBUG] DOMContentLoaded - 페이지 로드 시작');
+    console.log('[INIT] 페이지 로드');
 
     // Firebase 초기화
     if (!initFirebase()) {
-        alert('Firebase 설정이 필요합니다. firebase-config.js를 확인하세요.');
+        alert('Firebase 설정이 필요합니다.');
         return;
     }
-    console.log('[DEBUG] Firebase 초기화 완료');
 
-    // 인증 상태 확인 (리스너 방식으로 변경)
-    auth.onAuthStateChanged(user => {
-        console.log('[DEBUG] onAuthStateChanged 호출됨, user:', user ? user.email : 'null');
+    console.log('[INIT] Firebase 초기화 완료');
 
-        if (user) {
-            // 로그인 상태
-            if (!mainPageInitialized) {
-                console.log('[DEBUG] 초기화 시작');
-                mainPageInitialized = true;
-                currentUser = user;
-                displayUserInfo(currentUser);
+    // 인증 상태 확인 - 단 한 번만 처리
+    const unsubscribe = auth.onAuthStateChanged(user => {
+        console.log('[AUTH] 인증 상태 변경:', user ? user.email : '로그인 안 됨');
 
-                // Firebase에서 데이터 로드
-                loadDataFromFirebase();
-
-                // 차트 초기화
-                initCharts();
-
-                // 폼 제출 이벤트
-                document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
-                console.log('[DEBUG] 초기화 완료');
-            } else {
-                console.log('[DEBUG] 이미 초기화됨 - 중복 실행 방지');
-            }
-        } else {
-            // 로그인 안 됨 - login.html로 이동
-            console.log('[DEBUG] 로그인 안 됨, 리다이렉트 시도');
-            console.log('[DEBUG] 리다이렉트 임시 비활성화 - 디버깅용');
-            // 임시로 리다이렉트 비활성화
-            // if (!mainPageRedirecting) {
-            //     mainPageRedirecting = true;
-            //     console.log('[DEBUG] login.html로 리다이렉트');
-            //     window.location.replace('login.html');
-            // } else {
-            //     console.log('[DEBUG] 이미 리다이렉트 중 - 중복 방지');
-            // }
+        if (!user) {
+            console.log('[AUTH] 로그인 필요 - login.html로 이동');
+            window.location.replace('login.html');
+            return;
         }
+
+        // 이미 초기화되었으면 무시
+        if (initialized) {
+            console.log('[AUTH] 이미 초기화됨 - 스킵');
+            return;
+        }
+
+        initialized = true;
+        currentUser = user;
+        console.log('[INIT] 앱 초기화 시작');
+
+        // UI 초기화
+        initializeApp();
+
+        // 리스너는 한 번만 등록했으므로 해제하지 않음
     });
 });
+
+// 앱 초기화
+function initializeApp() {
+    console.log('[APP] 사용자 정보 표시');
+    displayUserInfo(currentUser);
+
+    console.log('[APP] 차트 초기화');
+    initCharts();
+
+    console.log('[APP] Firebase 데이터 리스너 등록');
+    setupFirebaseListeners();
+
+    console.log('[APP] 폼 이벤트 등록');
+    document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
+
+    console.log('[APP] 초기화 완료!');
+}
 
 // 사용자 정보 표시
 function displayUserInfo(user) {
@@ -87,32 +87,16 @@ function displayUserInfo(user) {
     }
 }
 
-// Firebase에서 데이터 로드
-function loadDataFromFirebase() {
-    console.log('[DEBUG] loadDataFromFirebase 호출');
-    if (!currentUser) {
-        console.log('[DEBUG] currentUser 없음, 종료');
-        return;
-    }
-
-    // 이미 리스너가 등록되어 있으면 중복 등록 방지
-    if (assetsListener || historyListener) {
-        console.log('[DEBUG] 리스너 이미 등록됨, 중복 방지');
-        return;
-    }
-
-    console.log('[DEBUG] Firebase 리스너 등록 시작');
-    const assetsRef = database.ref('assets');
-    const historyRef = database.ref('history');
-
-    // 자산 데이터 실시간 리스너
-    assetsListener = assetsRef.on('value', (snapshot) => {
-        console.log('[DEBUG] assets 데이터 업데이트됨');
+// Firebase 리스너 설정
+function setupFirebaseListeners() {
+    // 자산 데이터 리스너
+    database.ref('assets').on('value', (snapshot) => {
+        console.log('[FIREBASE] assets 데이터 수신');
         const data = snapshot.val();
+
         if (data) {
             assets = data;
         } else {
-            // 데이터가 없으면 초기 구조 생성
             assets = {
                 cash: [],
                 stock: [],
@@ -120,44 +104,25 @@ function loadDataFromFirebase() {
                 realEstate: []
             };
         }
+
         updateDashboard();
 
-        // 현재 활성 탭 새로고침
+        // 활성 탭 새로고침
         const activeTab = document.querySelector('.tab.active');
         if (activeTab) {
-            const category = ['cash', 'stock', 'crypto', 'realEstate'][
-                Array.from(document.querySelectorAll('.tab')).indexOf(activeTab)
-            ];
-            if (category) {
-                showTabContent(category);
+            const tabIndex = Array.from(document.querySelectorAll('.tab')).indexOf(activeTab);
+            const categories = ['cash', 'stock', 'crypto', 'realEstate'];
+            if (categories[tabIndex]) {
+                showTabContent(categories[tabIndex]);
             }
         }
     });
 
-    // 자산 추이 데이터 리스너
-    historyListener = historyRef.on('value', (snapshot) => {
+    // 히스토리 데이터 리스너
+    database.ref('history').on('value', () => {
+        console.log('[FIREBASE] history 데이터 수신');
         updateCharts();
     });
-}
-
-// Firebase에 데이터 저장
-async function saveDataToFirebase() {
-    if (!currentUser) return;
-
-    try {
-        // 자산 데이터 저장
-        await database.ref('assets').set(assets);
-
-        // 자산 추이 저장 (날짜별)
-        const today = new Date().toISOString().split('T')[0];
-        const total = calculateTotal();
-        await database.ref('history/' + today).set(total);
-
-        console.log('데이터 저장 완료');
-    } catch (error) {
-        console.error('데이터 저장 오류:', error);
-        alert('데이터 저장에 실패했습니다.');
-    }
 }
 
 // 대시보드 업데이트
@@ -202,11 +167,6 @@ function formatMoney(amount) {
 
 // 차트 초기화
 function initCharts() {
-    // 이미 차트가 존재하면 초기화하지 않음
-    if (pieChart || trendChart) {
-        return;
-    }
-
     const pieCtx = document.getElementById('assetPieChart').getContext('2d');
     pieChart = new Chart(pieCtx, {
         type: 'doughnut',
@@ -282,10 +242,10 @@ function updateCharts() {
     ];
     pieChart.update();
 
-    // 추이 차트 업데이트 - Firebase에서 히스토리 가져오기
+    // 추이 차트 업데이트
     database.ref('history').once('value').then((snapshot) => {
         const history = snapshot.val() || {};
-        const dates = Object.keys(history).sort().slice(-30); // 최근 30일
+        const dates = Object.keys(history).sort().slice(-30);
         const values = dates.map(date => history[date]);
 
         trendChart.data.labels = dates.map(date => {
@@ -299,14 +259,11 @@ function updateCharts() {
 
 // 탭 전환
 function showTab(category) {
-    // 탭 버튼 활성화
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
 
-    // event가 있는 경우에만 (클릭한 경우)
     if (typeof event !== 'undefined' && event.target) {
         event.target.classList.add('active');
     } else {
-        // 프로그래밍 방식 호출 - 첫 번째 탭 활성화
         const firstTab = document.querySelector('.tab');
         if (firstTab) firstTab.classList.add('active');
     }
@@ -389,7 +346,7 @@ function editAsset(category, index) {
 async function deleteAsset(category, index) {
     if (confirm('정말 삭제하시겠습니까?')) {
         assets[category].splice(index, 1);
-        await saveDataToFirebase();
+        await saveToFirebase();
     }
 }
 
@@ -406,20 +363,44 @@ async function handleFormSubmit(e) {
     const assetData = { name, amount, note };
 
     if (editIndex === '') {
-        // 새로 추가
         assets[category].push(assetData);
     } else {
-        // 수정
         assets[category][editIndex] = assetData;
     }
 
-    await saveDataToFirebase();
+    await saveToFirebase();
     closeModal();
 
-    // 해당 탭으로 이동
     const tabs = document.querySelectorAll('.tab');
     const categoryIndex = ['cash', 'stock', 'crypto', 'realEstate'].indexOf(category);
     tabs[categoryIndex].click();
+}
+
+// Firebase에 저장
+async function saveToFirebase() {
+    try {
+        await database.ref('assets').set(assets);
+
+        const today = new Date().toISOString().split('T')[0];
+        const total = calculateTotal();
+        await database.ref('history/' + today).set(total);
+
+        console.log('[SAVE] 데이터 저장 완료');
+    } catch (error) {
+        console.error('[SAVE] 저장 실패:', error);
+        alert('데이터 저장에 실패했습니다.');
+    }
+}
+
+// 로그아웃
+async function logout() {
+    try {
+        await auth.signOut();
+        window.location.replace('login.html');
+    } catch (error) {
+        console.error('로그아웃 오류:', error);
+        alert('로그아웃에 실패했습니다.');
+    }
 }
 
 // 모달 외부 클릭시 닫기
@@ -429,24 +410,3 @@ window.onclick = function(event) {
         closeModal();
     }
 }
-
-// 데이터 내보내기
-function exportData() {
-    const dataStr = JSON.stringify(assets, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `자산현황_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-}
-
-// 페이지 종료시 리스너 정리
-window.addEventListener('beforeunload', () => {
-    if (assetsListener) {
-        database.ref('assets').off('value', assetsListener);
-    }
-    if (historyListener) {
-        database.ref('history').off('value', historyListener);
-    }
-});
