@@ -59,13 +59,15 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // 로그인 안 됨 - login.html로 이동
             console.log('[DEBUG] 로그인 안 됨, 리다이렉트 시도');
-            if (!mainPageRedirecting) {
-                mainPageRedirecting = true;
-                console.log('[DEBUG] login.html로 리다이렉트');
-                window.location.replace('login.html');
-            } else {
-                console.log('[DEBUG] 이미 리다이렉트 중 - 중복 방지');
-            }
+            console.log('[DEBUG] 리다이렉트 임시 비활성화 - 디버깅용');
+            // 임시로 리다이렉트 비활성화
+            // if (!mainPageRedirecting) {
+            //     mainPageRedirecting = true;
+            //     console.log('[DEBUG] login.html로 리다이렉트');
+            //     window.location.replace('login.html');
+            // } else {
+            //     console.log('[DEBUG] 이미 리다이렉트 중 - 중복 방지');
+            // }
         }
     });
 });
