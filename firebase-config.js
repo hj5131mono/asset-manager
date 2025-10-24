@@ -12,12 +12,20 @@ const firebaseConfig = {
 
 // Firebase 초기화
 let app, auth, database;
+let firebaseInitialized = false;
 
 function initFirebase() {
+    // 이미 초기화되었으면 스킵
+    if (firebaseInitialized) {
+        console.log('Firebase 이미 초기화됨');
+        return true;
+    }
+
     try {
         app = firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
         database = firebase.database();
+        firebaseInitialized = true;
         console.log('Firebase 초기화 성공');
         return true;
     } catch (error) {
