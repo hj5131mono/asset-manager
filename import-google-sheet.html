@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>구글 시트 데이터 가져오기</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        .import-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .import-container h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .import-container p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .preview {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .preview h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .preview pre {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="import-container">
+            <h1>📊 구글 시트 데이터 가져오기</h1>
+
+            <p>
+                <strong>안내:</strong><br>
+                구글 시트의 데이터를 Firebase로 가져옵니다.
+                시트는 <strong>"누구나 링크가 있는 사용자는 볼 수 있음"</strong>으로 공유 설정이 되어 있어야 합니다.
+            </p>
+
+            <div class="input-group">
+                <label for="sheetUrl">구글 시트 URL</label>
+                <input type="text" id="sheetUrl"
+                       placeholder="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit..."
+                       value="https://docs.google.com/spreadsheets/d/1o2eoWAqgVhnwqZa4pVYfAN8-jtRoyXZxPm5raN1uKUw/edit?gid=1942453598#gid=1942453598">
+            </div>
+
+            <div class="input-group">
+                <label for="sheetName">시트 이름 (탭 이름)</label>
+                <input type="text" id="sheetName" placeholder="예: Sheet1, 자산현황 등" value="Sheet1">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="previewData()">미리보기</button>
+                <button class="btn btn-primary" onclick="importData()">Firebase로 가져오기</button>
+                <button class="btn btn-secondary" onclick="goToDashboard()">대시보드로 이동</button>
+            </div>
+
+            <div id="status" class="status"></div>
+
+            <div id="preview" class="preview" style="display: none;">
+                <h3>데이터 미리보기</h3>
+                <pre id="previewContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+
+    <script>
+        let previewedData = null;
+
+        // 페이지 로드시 인증 확인
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!initFirebase()) {
+                showStatus('Firebase 초기화 실패', 'error');
+                return;
+            }
+
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    window.location.href = 'login.html';
+                }
+            });
+        });
+
+        // 구글 시트 URL에서 ID 추출
+        function extractSheetId(url) {
+            const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            return match ? match[1] : null;
+        }
+
+        // 구글 시트에서 데이터 가져오기
+        async function fetchSheetData() {
+            const url = document.getElementById('sheetUrl').value;
+            const sheetName = document.getElementById('sheetName').value || 'Sheet1';
+
+            const sheetId = extractSheetId(url);
+            if (!sheetId) {
+                throw new Error('잘못된 구글 시트 URL입니다.');
+            }
+
+            // Google Sheets API를 사용하지 않고 CSV export 사용
+            const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+
+            const response = await fetch(csvUrl);
+            if (!response.ok) {
+                throw new Error('시트를 가져올 수 없습니다. 공유 설정을 확인하세요.');
+            }
+
+            const csvText = await response.text();
+            return parseCSV(csvText);
+        }
+
+        // CSV 파싱
+        function parseCSV(csv) {
+            const lines = csv.split('\n').filter(line => line.trim());
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+
+            return { headers, data };
+        }
+
+        // 데이터를 Firebase 형식으로 변환
+        function convertToFirebaseFormat(sheetData) {
+            // 이 함수는 시트 구조에 맞게 수정해야 합니다
+            // 예시: 카테고리, 항목명, 금액, 메모 컬럼이 있다고 가정
+
+            const assets = {
+                cash: [],
+                stock: [],
+                crypto: [],
+                realEstate: []
+            };
+
+            sheetData.data.forEach(row => {
+                const category = row['카테고리'] || row['Category'] || '';
+                const name = row['항목명'] || row['Name'] || row['항목'] || '';
+                const amount = parseFloat((row['금액'] || row['Amount'] || '0').replace(/[^0-9.-]/g, '')) || 0;
+                const note = row['메모'] || row['Note'] || '';
+
+                if (!name) return;
+
+                const item = { name, amount, note };
+
+                // 카테고리별로 분류
+                if (category.includes('현금') || category.includes('예금') || category.toLowerCase().includes('cash')) {
+                    assets.cash.push(item);
+                } else if (category.includes('주식') || category.includes('펀드') || category.toLowerCase().includes('stock')) {
+                    assets.stock.push(item);
+                } else if (category.includes('암호화폐') || category.toLowerCase().includes('crypto')) {
+                    assets.crypto.push(item);
+                } else if (category.includes('부동산') || category.toLowerCase().includes('real')) {
+                    assets.realEstate.push(item);
+                } else {
+                    // 카테고리가 명확하지 않으면 기타로
+                    assets.realEstate.push(item);
+                }
+            });
+
+            return assets;
+        }
+
+        // 미리보기
+        async function previewData() {
+            showStatus('데이터를 가져오는 중...', 'info');
+
+            try {
+                const sheetData = await fetchSheetData();
+                previewedData = convertToFirebaseFormat(sheetData);
+
+                document.getElementById('preview').style.display = 'block';
+                document.getElementById('previewContent').textContent = JSON.stringify(previewedData, null, 2);
+
+                showStatus('미리보기 완료! 아래 데이터를 확인하세요.', 'success');
+            } catch (error) {
+                showStatus('오류: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // Firebase로 가져오기
+        async function importData() {
+            if (!previewedData) {
+                showStatus('먼저 미리보기를 해주세요.', 'error');
+                return;
+            }
+
+            if (!confirm('기존 데이터를 덮어쓰시겠습니까?')) {
+                return;
+            }
+
+            showStatus('Firebase로 데이터를 저장하는 중...', 'info');
+
+            try {
+                await database.ref('assets').set(previewedData);
+
+                // 현재 날짜의 총 자산도 저장
+                const total = Object.keys(previewedData).reduce((sum, category) => {
+                    return sum + previewedData[category].reduce((s, item) => s + item.amount, 0);
+                }, 0);
+
+                const today = new Date().toISOString().split('T')[0];
+                await database.ref('history/' + today).set(total);
+
+                showStatus('✅ 데이터 가져오기 완료!', 'success');
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            } catch (error) {
+                showStatus('오류: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 대시보드로 이동
+        function goToDashboard() {
+            window.location.href = 'index.html';
+        }
+
+        // 상태 메시지 표시
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+            status.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

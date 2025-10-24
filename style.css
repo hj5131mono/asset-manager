@@ -28,9 +28,67 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     flex-wrap: wrap;
     gap: 15px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.date-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-control label {
+    font-weight: 600;
+    color: #333;
+}
+
+.date-control input[type="date"] {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.95em;
+}
+
+.exchange-rate {
+    color: #667eea;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.owner-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.owner-tab {
+    padding: 10px 20px;
+    background: #e9ecef;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 500;
+}
+
+.owner-tab.active {
+    background: #667eea;
+    color: white;
+}
+
+.owner-tab:hover {
+    background: #5568d3;
+    color: white;
 }
 
 header h1 {
@@ -100,6 +158,20 @@ header h1 {
     font-size: 2.5em;
     font-weight: bold;
     margin-top: 10px;
+}
+
+.asset-change {
+    margin-top: 10px;
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.asset-change.positive {
+    color: #ff6b6b;
+}
+
+.asset-change.negative {
+    color: #4dabf7;
 }
 
 .dashboard {
@@ -228,15 +300,45 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .asset-info {
     flex: 1;
+    min-width: 200px;
 }
 
 .asset-info strong {
     color: #333;
     font-size: 1.1em;
+    margin-right: 8px;
+}
+
+.owner-badge,
+.ticker-badge,
+.currency-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: 600;
+    margin-right: 5px;
+}
+
+.owner-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.ticker-badge {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.currency-badge {
+    background: #e8f5e9;
+    color: #388e3c;
 }
 
 .asset-info .note {
@@ -245,11 +347,30 @@ header h1 {
     margin-top: 5px;
 }
 
+.asset-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
 .asset-amount {
     font-size: 1.3em;
     font-weight: bold;
     color: #667eea;
-    margin: 0 20px;
+}
+
+.asset-return {
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.asset-return.positive {
+    color: #ff6b6b;
+}
+
+.asset-return.negative {
+    color: #4dabf7;
 }
 
 .asset-actions button {
@@ -325,12 +446,18 @@ header h1 {
     font-weight: bold;
 }
 
-#assetForm input {
+#assetForm input,
+#assetForm select {
     width: 100%;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 1em;
+}
+
+#assetForm select {
+    cursor: pointer;
+    background: white;
 }
 
 .form-buttons {

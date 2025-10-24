@@ -16,6 +16,17 @@ let currentUser = null;
 // 초기화 완료 플래그
 let initialized = false;
 
+// 필터 상태
+let currentOwnerFilter = 'all';
+
+// 환율 정보
+let exchangeRates = {
+    USD: 1350 // 기본값
+};
+
+// 기준일자
+let baseDate = null;
+
 // 페이지 로드 시 단 한 번만 실행
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[INIT] 페이지 로드');
@@ -78,11 +89,15 @@ function initializeApp() {
     console.log('[APP] 차트 초기화');
     initCharts();
 
+    console.log('[APP] 기준일자 초기화');
+    initBaseDate();
+
     console.log('[APP] Firebase 데이터 리스너 등록');
     setupFirebaseListeners();
 
     console.log('[APP] 폼 이벤트 등록');
     document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
+    document.getElementById('baseDate').addEventListener('change', handleBaseDateChange);
 
     console.log('[APP] 초기화 완료!');
 }
@@ -143,10 +158,10 @@ function setupFirebaseListeners() {
 // 대시보드 업데이트
 function updateDashboard() {
     const totals = {
-        cash: calculateCategoryTotal('cash'),
-        stock: calculateCategoryTotal('stock'),
-        crypto: calculateCategoryTotal('crypto'),
-        realEstate: calculateCategoryTotal('realEstate')
+        cash: calculateCategoryTotalFiltered('cash'),
+        stock: calculateCategoryTotalFiltered('stock'),
+        crypto: calculateCategoryTotalFiltered('crypto'),
+        realEstate: calculateCategoryTotalFiltered('realEstate')
     };
 
     document.getElementById('cashTotal').textContent = formatMoney(totals.cash);
@@ -154,7 +169,7 @@ function updateDashboard() {
     document.getElementById('cryptoTotal').textContent = formatMoney(totals.crypto);
     document.getElementById('realEstateTotal').textContent = formatMoney(totals.realEstate);
 
-    const total = calculateTotal();
+    const total = calculateTotalFiltered();
     document.getElementById('totalAssets').textContent = formatMoney(total);
 
     updateCharts();
@@ -289,25 +304,52 @@ function showTab(category) {
 // 탭 내용 표시
 function showTabContent(category) {
     const content = document.getElementById('detailsContent');
-    const items = assets[category];
+    let items = assets[category];
+
+    // 필터 적용
+    if (currentOwnerFilter !== 'all') {
+        items = items.filter(item => item.owner === currentOwnerFilter);
+    }
 
     if (items.length === 0) {
         content.innerHTML = '<div class="empty-state">등록된 자산이 없습니다.</div>';
         return;
     }
 
+    // 자산 규모순으로 정렬
+    const itemsWithKRW = items.map((item, index) => ({
+        ...item,
+        originalIndex: assets[category].indexOf(item),
+        amountKRW: convertToKRW(item.amount, item.currency || 'KRW')
+    }));
+    itemsWithKRW.sort((a, b) => b.amountKRW - a.amountKRW);
+
     let html = '<ul class="asset-list">';
-    items.forEach((item, index) => {
+    itemsWithKRW.forEach((item) => {
+        const returnInfo = calculateReturn(item.amount, item.purchaseAmount, item.currency || 'KRW');
+        const profitClass = returnInfo.profit > 0 ? 'positive' : returnInfo.profit < 0 ? 'negative' : '';
+
         html += `
             <li class="asset-item">
                 <div class="asset-info">
                     <strong>${item.name}</strong>
+                    ${item.owner ? `<span class="owner-badge">${item.owner}</span>` : ''}
+                    ${item.ticker ? `<span class="ticker-badge">${item.ticker}</span>` : ''}
+                    ${item.currency === 'USD' ? `<span class="currency-badge">$${item.amount.toLocaleString()}</span>` : ''}
                     ${item.note ? `<div class="note">${item.note}</div>` : ''}
                 </div>
-                <div class="asset-amount">${formatMoney(item.amount)}</div>
+                <div class="asset-details">
+                    <div class="asset-amount">${formatMoney(item.amountKRW)}</div>
+                    ${returnInfo.returnRate !== 0 ? `
+                        <div class="asset-return ${profitClass}">
+                            ${returnInfo.profit > 0 ? '+' : ''}${formatMoney(returnInfo.profit)}
+                            (${returnInfo.returnRate > 0 ? '+' : ''}${returnInfo.returnRate.toFixed(2)}%)
+                        </div>
+                    ` : ''}
+                </div>
                 <div class="asset-actions">
-                    <button class="edit-btn" onclick="editAsset('${category}', ${index})">수정</button>
-                    <button class="delete-btn" onclick="deleteAsset('${category}', ${index})">삭제</button>
+                    <button class="edit-btn" onclick="editAsset('${category}', ${item.originalIndex})">수정</button>
+                    <button class="delete-btn" onclick="deleteAsset('${category}', ${item.originalIndex})">삭제</button>
                 </div>
             </li>
         `;
@@ -351,8 +393,12 @@ function editAsset(category, index) {
     document.getElementById('modalTitle').textContent = titles[category] + ' 수정';
     document.getElementById('assetType').value = category;
     document.getElementById('editIndex').value = index;
+    document.getElementById('assetOwner').value = item.owner || '희준';
     document.getElementById('assetName').value = item.name;
+    document.getElementById('assetCurrency').value = item.currency || 'KRW';
     document.getElementById('assetAmount').value = item.amount;
+    document.getElementById('assetPurchaseAmount').value = item.purchaseAmount || '';
+    document.getElementById('assetTicker').value = item.ticker || '';
     document.getElementById('assetNote').value = item.note || '';
     document.getElementById('assetModal').style.display = 'block';
 }
@@ -371,11 +417,23 @@ async function handleFormSubmit(e) {
 
     const category = document.getElementById('assetType').value;
     const editIndex = document.getElementById('editIndex').value;
+    const owner = document.getElementById('assetOwner').value;
     const name = document.getElementById('assetName').value;
+    const currency = document.getElementById('assetCurrency').value;
     const amount = parseFloat(document.getElementById('assetAmount').value);
+    const purchaseAmount = parseFloat(document.getElementById('assetPurchaseAmount').value) || null;
+    const ticker = document.getElementById('assetTicker').value.trim();
     const note = document.getElementById('assetNote').value;
 
-    const assetData = { name, amount, note };
+    const assetData = {
+        owner,
+        name,
+        currency,
+        amount,
+        purchaseAmount,
+        ticker,
+        note
+    };
 
     if (editIndex === '') {
         assets[category].push(assetData);
@@ -509,4 +567,98 @@ function exportToExcel() {
     link.download = `자산현황_${new Date().toISOString().split('T')[0]}.xls`;
     link.click();
     URL.revokeObjectURL(url);
+}
+
+// 기준일자 초기화
+function initBaseDate() {
+    const baseDateInput = document.getElementById('baseDate');
+    baseDate = new Date().toISOString().split('T')[0];
+    baseDateInput.value = baseDate;
+    fetchExchangeRate(baseDate);
+}
+
+// 기준일자 변경 처리
+function handleBaseDateChange(e) {
+    baseDate = e.target.value;
+    console.log('[DATE] 기준일자 변경:', baseDate);
+    fetchExchangeRate(baseDate);
+    updateDashboard();
+}
+
+// 환율 조회 (한국수출입은행 API)
+async function fetchExchangeRate(date) {
+    try {
+        // 한국수출입은행 API 사용 (무료, 인증키 필요)
+        // 실제 구현 시 API 키 필요
+        // 임시로 고정값 사용
+
+        // TODO: 실제 API 연동
+        // const apiKey = 'YOUR_API_KEY';
+        // const url = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=${apiKey}&searchdate=${date.replace(/-/g, '')}&data=AP01`;
+
+        // 임시 환율 (실제로는 API에서 가져와야 함)
+        exchangeRates.USD = 1350;
+
+        document.getElementById('exchangeRate').textContent = `$1 = ${formatMoney(exchangeRates.USD)}`;
+
+        console.log('[EXCHANGE] 환율 조회:', exchangeRates);
+    } catch (error) {
+        console.error('[EXCHANGE] 환율 조회 실패:', error);
+        exchangeRates.USD = 1350; // 기본값
+    }
+}
+
+// 소유자 필터
+function filterByOwner(owner) {
+    currentOwnerFilter = owner;
+
+    // 탭 활성화
+    document.querySelectorAll('.owner-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    console.log('[FILTER] 소유자 필터:', owner);
+    updateDashboard();
+}
+
+// 카테고리별 합계 계산 (필터 적용)
+function calculateCategoryTotalFiltered(category) {
+    return assets[category]
+        .filter(item => currentOwnerFilter === 'all' || item.owner === currentOwnerFilter)
+        .reduce((sum, item) => {
+            const amount = convertToKRW(item.amount, item.currency || 'KRW');
+            return sum + amount;
+        }, 0);
+}
+
+// 전체 합계 계산 (필터 적용)
+function calculateTotalFiltered() {
+    return Object.keys(assets).reduce((sum, category) => {
+        return sum + calculateCategoryTotalFiltered(category);
+    }, 0);
+}
+
+// 통화 변환 (원화로)
+function convertToKRW(amount, currency) {
+    if (currency === 'KRW') {
+        return amount;
+    } else if (currency === 'USD') {
+        return amount * exchangeRates.USD;
+    }
+    return amount;
+}
+
+// 수익률 계산
+function calculateReturn(currentAmount, purchaseAmount, currency) {
+    if (!purchaseAmount || purchaseAmount === 0) {
+        return { profit: 0, returnRate: 0 };
+    }
+
+    const current = convertToKRW(currentAmount, currency);
+    const purchase = convertToKRW(purchaseAmount, currency);
+    const profit = current - purchase;
+    const returnRate = (profit / purchase) * 100;
+
+    return { profit, returnRate };
 }

@@ -17,17 +17,30 @@
         <header>
             <div class="header-top">
                 <h1>💰 자산 관리 대시보드</h1>
-                <div class="user-info">
-                    <img id="userPhoto" src="" alt="" style="display:none;">
-                    <span id="userName"></span>
-                    <button onclick="exportToExcel()" class="export-btn">📥 엑셀 다운로드</button>
-                    <button onclick="exportToCSV()" class="export-btn">📄 CSV 다운로드</button>
-                    <button onclick="logout()" class="logout-btn">로그아웃</button>
+                <div class="header-controls">
+                    <div class="date-control">
+                        <label for="baseDate">기준일자:</label>
+                        <input type="date" id="baseDate">
+                        <span id="exchangeRate" class="exchange-rate"></span>
+                    </div>
+                    <div class="user-info">
+                        <img id="userPhoto" src="" alt="" style="display:none;">
+                        <span id="userName"></span>
+                        <button onclick="exportToExcel()" class="export-btn">📥 엑셀 다운로드</button>
+                        <button onclick="exportToCSV()" class="export-btn">📄 CSV 다운로드</button>
+                        <button onclick="logout()" class="logout-btn">로그아웃</button>
+                    </div>
                 </div>
+            </div>
+            <div class="owner-tabs">
+                <button class="owner-tab active" onclick="filterByOwner('all')">👥 전체</button>
+                <button class="owner-tab" onclick="filterByOwner('희준')">👤 희준</button>
+                <button class="owner-tab" onclick="filterByOwner('배우자')">👤 배우자</button>
             </div>
             <div class="total-assets">
                 <h2>총 자산</h2>
                 <p class="total-amount" id="totalAssets">0원</p>
+                <div class="asset-change" id="assetChange"></div>
             </div>
         </header>
 
@@ -90,11 +103,29 @@
                     <input type="hidden" id="assetType">
                     <input type="hidden" id="editIndex">
 
-                    <label for="assetName">항목명</label>
+                    <label for="assetOwner">소유자 *</label>
+                    <select id="assetOwner" required>
+                        <option value="희준">희준</option>
+                        <option value="배우자">배우자</option>
+                    </select>
+
+                    <label for="assetName">항목명 *</label>
                     <input type="text" id="assetName" required>
 
-                    <label for="assetAmount">금액 (원)</label>
-                    <input type="number" id="assetAmount" required>
+                    <label for="assetCurrency">통화 *</label>
+                    <select id="assetCurrency" required>
+                        <option value="KRW">원화 (KRW)</option>
+                        <option value="USD">달러 (USD)</option>
+                    </select>
+
+                    <label for="assetAmount">현재 금액 *</label>
+                    <input type="number" id="assetAmount" required step="0.01">
+
+                    <label for="assetPurchaseAmount">매입 금액 (선택)</label>
+                    <input type="number" id="assetPurchaseAmount" step="0.01" placeholder="수익률 계산용">
+
+                    <label for="assetTicker">티커 (선택, 주식만)</label>
+                    <input type="text" id="assetTicker" placeholder="예: AAPL, 005930">
 
                     <label for="assetNote">메모</label>
                     <input type="text" id="assetNote">

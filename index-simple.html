@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자산 관리 대시보드</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 자산 관리 대시보드</h1>
+            <div class="total-assets">
+                <h2>총 자산</h2>
+                <p class="total-amount" id="totalAssets">0원</p>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <!-- 자산 요약 카드 -->
+            <div class="summary-cards">
+                <div class="card">
+                    <h3>💵 현금/예금</h3>
+                    <p class="amount" id="cashTotal">0원</p>
+                    <button onclick="showModal('cash')">관리</button>
+                </div>
+                <div class="card">
+                    <h3>📈 주식/펀드</h3>
+                    <p class="amount" id="stockTotal">0원</p>
+                    <button onclick="showModal('stock')">관리</button>
+                </div>
+                <div class="card">
+                    <h3>₿ 암호화폐</h3>
+                    <p class="amount" id="cryptoTotal">0원</p>
+                    <button onclick="showModal('crypto')">관리</button>
+                </div>
+                <div class="card">
+                    <h3>🏠 부동산/기타</h3>
+                    <p class="amount" id="realEstateTotal">0원</p>
+                    <button onclick="showModal('realEstate')">관리</button>
+                </div>
+            </div>
+
+            <!-- 차트 섹션 -->
+            <div class="charts">
+                <div class="chart-container">
+                    <h3>자산 분포</h3>
+                    <canvas id="assetPieChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>자산 추이</h3>
+                    <canvas id="assetTrendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 상세 내역 -->
+            <div class="details-section">
+                <h3>상세 내역</h3>
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab(event, 'cash')">현금/예금</button>
+                    <button class="tab" onclick="showTab(event, 'stock')">주식/펀드</button>
+                    <button class="tab" onclick="showTab(event, 'crypto')">암호화폐</button>
+                    <button class="tab" onclick="showTab(event, 'realEstate')">부동산/기타</button>
+                </div>
+                <div id="detailsContent"></div>
+            </div>
+        </div>
+
+        <!-- 모달 -->
+        <div id="assetModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2 id="modalTitle">자산 추가/수정</h2>
+                <form id="assetForm">
+                    <input type="hidden" id="assetType">
+                    <input type="hidden" id="editIndex">
+
+                    <label for="assetName">항목명</label>
+                    <input type="text" id="assetName" required>
+
+                    <label for="assetAmount">금액 (원)</label>
+                    <input type="number" id="assetAmount" required>
+
+                    <label for="assetNote">메모</label>
+                    <input type="text" id="assetNote">
+
+                    <div class="form-buttons">
+                        <button type="submit">저장</button>
+                        <button type="button" onclick="closeModal()">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script-simple.js"></script>
+</body>
+</html>
