@@ -1,36 +1,21 @@
-// 인증 관련 JavaScript
-
-// 리다이렉트 중복 방지 플래그
-let isRedirecting = false;
-let authUnsubscribe = null;
+// 인증 관련 JavaScript - login.html 전용
 
 // 페이지 로드시 Firebase 초기화
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[LOGIN] 로그인 페이지 로드');
+
     if (!initFirebase()) {
         showError('Firebase 초기화에 실패했습니다. firebase-config.js 파일을 확인하세요.');
         return;
     }
 
-    // 이미 로그인되어 있는지 확인
-    authUnsubscribe = auth.onAuthStateChanged(user => {
-        if (user && !isRedirecting) {
-            // 이미 로그인되어 있으면 메인 페이지로 이동
-            isRedirecting = true;
-            console.log('[LOGIN DEBUG] 이미 로그인됨, index.html로 이동');
+    console.log('[LOGIN] Firebase 초기화 완료');
 
-            // 리스너 해제
-            if (authUnsubscribe) {
-                authUnsubscribe();
-            }
-
-            window.location.replace('index.html');
-        }
-    });
-
-    // 구글 로그인 버튼 이벤트
+    // 구글 로그인 버튼 이벤트만 등록 (자동 리다이렉트 제거)
     const loginBtn = document.getElementById('googleLoginBtn');
     if (loginBtn) {
         loginBtn.addEventListener('click', loginWithGoogle);
+        console.log('[LOGIN] 로그인 버튼 이벤트 등록 완료');
     }
 });
 
@@ -38,6 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loginWithGoogle() {
     const loading = document.getElementById('loading');
     const errorMessage = document.getElementById('errorMessage');
+
+    console.log('[LOGIN] 구글 로그인 시도');
 
     try {
         loading.style.display = 'block';
@@ -51,9 +38,9 @@ async function loginWithGoogle() {
         const result = await auth.signInWithPopup(provider);
         const user = result.user;
 
-        console.log('로그인 성공:', user.email);
+        console.log('[LOGIN] 로그인 성공:', user.email);
 
-        // 사용자 정보를 데이터베이스에 저장 (첫 로그인시)
+        // 사용자 정보를 데이터베이스에 저장
         const userRef = database.ref('users/' + user.uid);
         const snapshot = await userRef.once('value');
 
@@ -66,23 +53,18 @@ async function loginWithGoogle() {
                 lastLogin: firebase.database.ServerValue.TIMESTAMP
             });
         } else {
-            // 마지막 로그인 시간 업데이트
             await userRef.update({
                 lastLogin: firebase.database.ServerValue.TIMESTAMP
             });
         }
 
-        // 리스너 해제 후 메인 페이지로 이동
-        console.log('[LOGIN DEBUG] 로그인 성공, index.html로 이동');
+        console.log('[LOGIN] 사용자 정보 저장 완료, index.html로 이동');
 
-        if (authUnsubscribe) {
-            authUnsubscribe();
-        }
-
+        // 메인 페이지로 이동
         window.location.replace('index.html');
 
     } catch (error) {
-        console.error('로그인 오류:', error);
+        console.error('[LOGIN] 로그인 오류:', error);
         loading.style.display = 'none';
 
         let errorMsg = '로그인에 실패했습니다.';
@@ -102,7 +84,7 @@ async function loginWithGoogle() {
 async function logout() {
     try {
         await auth.signOut();
-        window.location.href = 'login.html';
+        window.location.replace('login.html');
     } catch (error) {
         console.error('로그아웃 오류:', error);
         alert('로그아웃에 실패했습니다.');
