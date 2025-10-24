@@ -17,6 +17,10 @@ let currentUser = null;
 let assetsListener = null;
 let historyListener = null;
 
+// 리다이렉트 중복 방지 플래그
+let isRedirecting = false;
+let isInitialized = false;
+
 // 초기화
 document.addEventListener('DOMContentLoaded', function() {
     // Firebase 초기화
@@ -29,20 +33,26 @@ document.addEventListener('DOMContentLoaded', function() {
     auth.onAuthStateChanged(user => {
         if (user) {
             // 로그인 상태
-            currentUser = user;
-            displayUserInfo(currentUser);
+            if (!isInitialized) {
+                isInitialized = true;
+                currentUser = user;
+                displayUserInfo(currentUser);
 
-            // Firebase에서 데이터 로드
-            loadDataFromFirebase();
+                // Firebase에서 데이터 로드
+                loadDataFromFirebase();
 
-            // 차트 초기화
-            initCharts();
+                // 차트 초기화
+                initCharts();
 
-            // 폼 제출 이벤트
-            document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
+                // 폼 제출 이벤트
+                document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
+            }
         } else {
             // 로그인 안 됨 - login.html로 이동
-            window.location.href = 'login.html';
+            if (!isRedirecting) {
+                isRedirecting = true;
+                window.location.replace('login.html');
+            }
         }
     });
 });

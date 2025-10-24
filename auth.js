@@ -1,5 +1,8 @@
 // 인증 관련 JavaScript
 
+// 리다이렉트 중복 방지 플래그
+let isRedirecting = false;
+
 // 페이지 로드시 Firebase 초기화
 document.addEventListener('DOMContentLoaded', function() {
     if (!initFirebase()) {
@@ -9,9 +12,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 이미 로그인되어 있는지 확인
     auth.onAuthStateChanged(user => {
-        if (user) {
+        if (user && !isRedirecting) {
             // 이미 로그인되어 있으면 메인 페이지로 이동
-            window.location.href = 'index.html';
+            isRedirecting = true;
+            window.location.replace('index.html');
         }
     });
 
