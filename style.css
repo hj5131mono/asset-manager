@@ -114,6 +114,39 @@ header h1 {
     font-weight: 500;
 }
 
+.template-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.3s;
+    margin-left: 5px;
+}
+
+.template-btn:hover {
+    background: #138496;
+}
+
+.upload-btn {
+    background: #ffc107;
+    color: #333;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.3s;
+    margin-left: 5px;
+    font-weight: 600;
+}
+
+.upload-btn:hover {
+    background: #e0a800;
+}
+
 .export-btn {
     background: #28a745;
     color: white;
@@ -458,6 +491,27 @@ header h1 {
 #assetForm select {
     cursor: pointer;
     background: white;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.form-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-col label {
+    margin-top: 0;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .form-buttons {

@@ -26,8 +26,10 @@
                     <div class="user-info">
                         <img id="userPhoto" src="" alt="" style="display:none;">
                         <span id="userName"></span>
-                        <button onclick="exportToExcel()" class="export-btn">📥 엑셀 다운로드</button>
-                        <button onclick="exportToCSV()" class="export-btn">📄 CSV 다운로드</button>
+                        <button onclick="location.href='asset-template.html'" class="template-btn">📋 템플릿</button>
+                        <button onclick="document.getElementById('excelUpload').click()" class="upload-btn">📤 업로드</button>
+                        <input type="file" id="excelUpload" accept=".xls,.xlsx,.csv" style="display:none;" onchange="handleExcelUpload(event)">
+                        <button onclick="exportToExcel()" class="export-btn">📥 다운로드</button>
                         <button onclick="logout()" class="logout-btn">로그아웃</button>
                     </div>
                 </div>
@@ -35,7 +37,7 @@
             <div class="owner-tabs">
                 <button class="owner-tab active" onclick="filterByOwner('all')">👥 전체</button>
                 <button class="owner-tab" onclick="filterByOwner('희준')">👤 희준</button>
-                <button class="owner-tab" onclick="filterByOwner('배우자')">👤 배우자</button>
+                <button class="owner-tab" onclick="filterByOwner('영은')">👤 영은</button>
             </div>
             <div class="total-assets">
                 <h2>총 자산</h2>
@@ -103,32 +105,90 @@
                     <input type="hidden" id="assetType">
                     <input type="hidden" id="editIndex">
 
-                    <label for="assetOwner">소유자 *</label>
-                    <select id="assetOwner" required>
-                        <option value="희준">희준</option>
-                        <option value="배우자">배우자</option>
-                    </select>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetOwner">소유자 *</label>
+                            <select id="assetOwner" required>
+                                <option value="희준">희준</option>
+                                <option value="영은">영은</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="assetCountry">국가</label>
+                            <select id="assetCountry">
+                                <option value="한국">한국</option>
+                                <option value="미국">미국</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <label for="assetName">항목명 *</label>
-                    <input type="text" id="assetName" required>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetInstitution">금융사</label>
+                            <input type="text" id="assetInstitution" placeholder="예: 신한은행, 미래에셋">
+                        </div>
+                        <div class="form-col">
+                            <label for="assetAccountType">계좌유형</label>
+                            <select id="assetAccountType">
+                                <option value="">선택</option>
+                                <option value="예금">예금</option>
+                                <option value="적금">적금</option>
+                                <option value="증권">증권</option>
+                                <option value="펀드">펀드</option>
+                                <option value="연금">연금</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <label for="assetCurrency">통화 *</label>
-                    <select id="assetCurrency" required>
-                        <option value="KRW">원화 (KRW)</option>
-                        <option value="USD">달러 (USD)</option>
-                    </select>
+                    <label for="assetName">자산명 *</label>
+                    <input type="text" id="assetName" required placeholder="예: 삼성전자, S&P500 ETF">
 
-                    <label for="assetAmount">현재 금액 *</label>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetCurrency">통화 *</label>
+                            <select id="assetCurrency" required>
+                                <option value="KRW">원화 (KRW)</option>
+                                <option value="USD">달러 (USD)</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="assetLiquidity">유동구분</label>
+                            <select id="assetLiquidity">
+                                <option value="유동">유동</option>
+                                <option value="비유동">비유동</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetTicker">티커 (주식/ETF만)</label>
+                            <input type="text" id="assetTicker" placeholder="예: 005930.KS, AAPL">
+                        </div>
+                        <div class="form-col">
+                            <label for="assetQuantity">보유량</label>
+                            <input type="number" id="assetQuantity" step="0.01" placeholder="주식 수량">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetPurchasePrice">매입가</label>
+                            <input type="number" id="assetPurchasePrice" step="0.01" placeholder="주당 매입가">
+                        </div>
+                        <div class="form-col">
+                            <label for="assetPurchaseAmount">투자원금</label>
+                            <input type="number" id="assetPurchaseAmount" step="0.01" placeholder="총 투자원금">
+                        </div>
+                    </div>
+
+                    <label for="assetAmount">현재 평가금액 *</label>
                     <input type="number" id="assetAmount" required step="0.01">
 
-                    <label for="assetPurchaseAmount">매입 금액 (선택)</label>
-                    <input type="number" id="assetPurchaseAmount" step="0.01" placeholder="수익률 계산용">
-
-                    <label for="assetTicker">티커 (선택, 주식만)</label>
-                    <input type="text" id="assetTicker" placeholder="예: AAPL, 005930">
-
                     <label for="assetNote">메모</label>
-                    <input type="text" id="assetNote">
+                    <input type="text" id="assetNote" placeholder="추가 설명">
 
                     <div class="form-buttons">
                         <button type="submit">저장</button>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자산 템플릿 다운로드</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .info h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .info ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        .columns {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+        .columns strong {
+            color: #667eea;
+        }
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .download-btn {
+            background: #667eea;
+            color: white;
+        }
+        .download-btn:hover {
+            background: #5568d3;
+        }
+        .back-btn {
+            background: #6c757d;
+            color: white;
+        }
+        .back-btn:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 자산 관리 - 엑셀 템플릿</h1>
+
+        <div class="info">
+            <h3>📥 초기 자산 입력용 템플릿</h3>
+            <p>아래 버튼을 클릭하여 엑셀 템플릿을 다운로드하세요.</p>
+            <p>템플릿에 자산 정보를 입력한 후, 메인 페이지에서 업로드할 수 있습니다.</p>
+        </div>
+
+        <div class="columns">
+            <strong>📋 엑셀 열 구성:</strong><br>
+            <strong style="color: #dc3545;">수기 입력 필드:</strong><br>
+            소유자 | 통화 | 국가 | 대분류_금융사 | 중분류_계좌유형 | 소분류_자산유형 | 유동구분 | 자산성질 | 자산명 | Ticker | 보유량 | 매입가 | 투자원금
+            <br><br>
+            <strong style="color: #28a745;">자동 계산 필드:</strong><br>
+            투자원금(원화환산) | 현재가 | 평가금액 | 평가손익 | 수익률 | 평가금액(원화환산)
+        </div>
+
+        <div class="info">
+            <h3>💡 작성 가이드</h3>
+            <ul>
+                <li><strong>소유자:</strong> 희준 또는 영은</li>
+                <li><strong>통화:</strong> KRW 또는 USD</li>
+                <li><strong>국가:</strong> 한국, 미국, 기타</li>
+                <li><strong>유동구분:</strong> 유동 또는 비유동</li>
+                <li><strong>자산성질:</strong> 현금, 주식, 펀드, 예금, 적금, 암호화폐, 부동산 등</li>
+                <li><strong>Ticker:</strong> 주식/ETF의 경우만 입력 (예: 005930.KS, AAPL)</li>
+                <li><strong>보유량:</strong> 주식 수량 (일반 예금 등은 비워두기)</li>
+            </ul>
+        </div>
+
+        <div class="buttons">
+            <button class="download-btn" onclick="downloadTemplate()">📥 템플릿 다운로드</button>
+            <button class="back-btn" onclick="location.href='index.html'">🏠 메인으로</button>
+        </div>
+    </div>
+
+    <script>
+        function downloadTemplate() {
+            // 엑셀 템플릿 HTML 생성
+            let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            html += '<head><meta charset="utf-8"><title>자산 관리 템플릿</title>';
+            html += '<style>table { border-collapse: collapse; width: 100%; }';
+            html += 'th { background-color: #667eea; color: white; font-weight: bold; padding: 10px; border: 1px solid #333; }';
+            html += 'td { padding: 8px; border: 1px solid #ddd; }';
+            html += '.auto-calc { background-color: #e8f5e9; }';
+            html += '.required { background-color: #ffe6e6; }</style></head>';
+            html += '<body>';
+            html += '<h2>자산 관리 템플릿</h2>';
+            html += '<p><strong style="color: red;">빨간색 배경:</strong> 필수 입력 항목 | <strong style="color: green;">초록색 배경:</strong> 자동 계산 (비워두기)</p>';
+            html += '<table border="1">';
+
+            // 헤더
+            html += '<tr>';
+            html += '<th class="required">소유자</th>';
+            html += '<th class="required">통화</th>';
+            html += '<th>국가</th>';
+            html += '<th>대분류_금융사</th>';
+            html += '<th>중분류_계좌유형</th>';
+            html += '<th>소분류_자산유형</th>';
+            html += '<th>유동구분</th>';
+            html += '<th>자산성질</th>';
+            html += '<th class="required">자산명</th>';
+            html += '<th>Ticker</th>';
+            html += '<th>보유량</th>';
+            html += '<th>매입가</th>';
+            html += '<th>투자원금</th>';
+            html += '<th class="auto-calc">투자원금(원화환산)</th>';
+            html += '<th class="auto-calc">현재가</th>';
+            html += '<th class="required">평가금액</th>';
+            html += '<th class="auto-calc">평가손익</th>';
+            html += '<th class="auto-calc">수익률(%)</th>';
+            html += '<th class="auto-calc">평가금액(원화환산)</th>';
+            html += '</tr>';
+
+            // 예시 데이터 3행
+            const examples = [
+                ['희준', 'KRW', '한국', '신한은행', '예금', '정기예금', '유동', '현금', '신한 정기예금', '', '', '', '5000000', '', '', '5000000', '', '', ''],
+                ['희준', 'KRW', '한국', '미래에셋', '증권', '국내주식', '유동', '주식', '삼성전자', '005930.KS', '10', '65000', '650000', '', '', '700000', '', '', ''],
+                ['영은', 'USD', '미국', 'Schwab', '증권', 'ETF', '유동', '주식', 'S&P500 ETF', 'SPY', '5', '450', '2250', '', '', '2400', '', '', '']
+            ];
+
+            examples.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => {
+                    html += `<td>${cell}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            // 빈 행 10개 추가
+            for (let i = 0; i < 10; i++) {
+                html += '<tr>';
+                for (let j = 0; j < 19; j++) {
+                    html += '<td></td>';
+                }
+                html += '</tr>';
+            }
+
+            html += '</table>';
+            html += '<br><p><strong>작성 후 저장하여 메인 페이지에서 업로드하세요.</strong></p>';
+            html += '</body></html>';
+
+            // 다운로드
+            const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `자산관리_템플릿_${new Date().toISOString().split('T')[0]}.xls`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            alert('템플릿 다운로드가 시작되었습니다!\n\n작성 후 메인 페이지에서 업로드하세요.');
+        }
+    </script>
+</body>
+</html>

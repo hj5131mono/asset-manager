@@ -394,11 +394,17 @@ function editAsset(category, index) {
     document.getElementById('assetType').value = category;
     document.getElementById('editIndex').value = index;
     document.getElementById('assetOwner').value = item.owner || '희준';
+    document.getElementById('assetCountry').value = item.country || '한국';
+    document.getElementById('assetInstitution').value = item.institution || '';
+    document.getElementById('assetAccountType').value = item.accountType || '';
     document.getElementById('assetName').value = item.name;
     document.getElementById('assetCurrency').value = item.currency || 'KRW';
-    document.getElementById('assetAmount').value = item.amount;
-    document.getElementById('assetPurchaseAmount').value = item.purchaseAmount || '';
+    document.getElementById('assetLiquidity').value = item.liquidity || '유동';
     document.getElementById('assetTicker').value = item.ticker || '';
+    document.getElementById('assetQuantity').value = item.quantity || '';
+    document.getElementById('assetPurchasePrice').value = item.purchasePrice || '';
+    document.getElementById('assetPurchaseAmount').value = item.purchaseAmount || '';
+    document.getElementById('assetAmount').value = item.amount;
     document.getElementById('assetNote').value = item.note || '';
     document.getElementById('assetModal').style.display = 'block';
 }
@@ -418,21 +424,35 @@ async function handleFormSubmit(e) {
     const category = document.getElementById('assetType').value;
     const editIndex = document.getElementById('editIndex').value;
     const owner = document.getElementById('assetOwner').value;
+    const country = document.getElementById('assetCountry').value;
+    const institution = document.getElementById('assetInstitution').value.trim();
+    const accountType = document.getElementById('assetAccountType').value;
     const name = document.getElementById('assetName').value;
     const currency = document.getElementById('assetCurrency').value;
-    const amount = parseFloat(document.getElementById('assetAmount').value);
-    const purchaseAmount = parseFloat(document.getElementById('assetPurchaseAmount').value) || null;
+    const liquidity = document.getElementById('assetLiquidity').value;
     const ticker = document.getElementById('assetTicker').value.trim();
+    const quantity = parseFloat(document.getElementById('assetQuantity').value) || null;
+    const purchasePrice = parseFloat(document.getElementById('assetPurchasePrice').value) || null;
+    const purchaseAmount = parseFloat(document.getElementById('assetPurchaseAmount').value) || null;
+    const amount = parseFloat(document.getElementById('assetAmount').value);
     const note = document.getElementById('assetNote').value;
 
     const assetData = {
         owner,
+        country,
+        institution,
+        accountType,
+        assetType: category,
+        liquidity,
         name,
         currency,
-        amount,
-        purchaseAmount,
         ticker,
-        note
+        quantity,
+        purchasePrice,
+        purchaseAmount,
+        amount,
+        note,
+        updatedAt: new Date().toISOString()
     };
 
     if (editIndex === '') {
@@ -661,4 +681,107 @@ function calculateReturn(currentAmount, purchaseAmount, currency) {
     const returnRate = (profit / purchase) * 100;
 
     return { profit, returnRate };
+}
+
+// 엑셀/CSV 업로드 처리
+async function handleExcelUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const text = e.target.result;
+            const rows = parseExcelData(text);
+
+            if (rows.length === 0) {
+                alert('파일에서 데이터를 읽을 수 없습니다.');
+                return;
+            }
+
+            // 확인 메시지
+            const confirmed = confirm(`${rows.length}개의 자산 데이터를 가져왔습니다.\n\n기존 데이터에 추가하시겠습니까?`);
+            if (!confirmed) return;
+
+            let importCount = 0;
+            rows.forEach(row => {
+                const category = mapAssetTypeToCategory(row.assetType || row.assetNature);
+                if (category && row.name && row.amount) {
+                    assets[category].push(row);
+                    importCount++;
+                }
+            });
+
+            await saveToFirebase();
+            alert(`${importCount}개의 자산이 성공적으로 추가되었습니다!`);
+            updateDashboard();
+
+            // 파일 입력 초기화
+            event.target.value = '';
+        } catch (error) {
+            console.error('[UPLOAD] 업로드 오류:', error);
+            alert('파일을 읽는 중 오류가 발생했습니다.');
+        }
+    };
+
+    reader.readAsText(file, 'UTF-8');
+}
+
+// 엑셀 데이터 파싱
+function parseExcelData(text) {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+
+    const rows = [];
+
+    // 헤더 스킵 (첫 줄)
+    for (let i = 1; i < lines.length; i++) {
+        const cells = lines[i].split('\t');
+        if (cells.length < 13) continue; // 최소 필드 수 체크
+
+        const row = {
+            owner: cells[0] || '희준',
+            currency: cells[1] || 'KRW',
+            country: cells[2] || '한국',
+            institution: cells[3] || '',
+            accountType: cells[4] || '',
+            assetType: cells[5] || '',
+            liquidity: cells[6] || '유동',
+            assetNature: cells[7] || '',
+            name: cells[8] || '',
+            ticker: cells[9] || '',
+            quantity: parseFloat(cells[10]) || null,
+            purchasePrice: parseFloat(cells[11]) || null,
+            purchaseAmount: parseFloat(cells[12]) || null,
+            amount: parseFloat(cells[15]) || 0, // 평가금액 열
+            note: '',
+            updatedAt: new Date().toISOString()
+        };
+
+        rows.push(row);
+    }
+
+    return rows;
+}
+
+// 자산 유형을 카테고리로 매핑
+function mapAssetTypeToCategory(assetType) {
+    const mapping = {
+        '현금': 'cash',
+        '예금': 'cash',
+        '적금': 'cash',
+        '주식': 'stock',
+        '펀드': 'stock',
+        'ETF': 'stock',
+        '국내주식': 'stock',
+        '해외주식': 'stock',
+        '암호화폐': 'crypto',
+        '코인': 'crypto',
+        '비트코인': 'crypto',
+        '부동산': 'realEstate',
+        '아파트': 'realEstate',
+        '토지': 'realEstate'
+    };
+
+    return mapping[assetType] || 'cash';
 }
