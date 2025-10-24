@@ -18,33 +18,33 @@ let assetsListener = null;
 let historyListener = null;
 
 // 초기화
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     // Firebase 초기화
     if (!initFirebase()) {
         alert('Firebase 설정이 필요합니다. firebase-config.js를 확인하세요.');
         return;
     }
 
-    // 인증 확인
-    try {
-        currentUser = await checkAuth();
-        displayUserInfo(currentUser);
+    // 인증 상태 확인 (리스너 방식으로 변경)
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            // 로그인 상태
+            currentUser = user;
+            displayUserInfo(currentUser);
 
-        // Firebase에서 데이터 로드
-        loadDataFromFirebase();
+            // Firebase에서 데이터 로드
+            loadDataFromFirebase();
 
-        // 차트 초기화
-        initCharts();
+            // 차트 초기화
+            initCharts();
 
-        // 첫 탭 표시
-        showTab('cash');
-
-        // 폼 제출 이벤트
-        document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
-    } catch (error) {
-        console.error('인증 오류:', error);
-        window.location.href = 'login.html';
-    }
+            // 폼 제출 이벤트
+            document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
+        } else {
+            // 로그인 안 됨 - login.html로 이동
+            window.location.href = 'login.html';
+        }
+    });
 });
 
 // 사용자 정보 표시
@@ -259,7 +259,15 @@ function updateCharts() {
 function showTab(category) {
     // 탭 버튼 활성화
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    event.target.classList.add('active');
+
+    // event가 있는 경우에만 (클릭한 경우)
+    if (typeof event !== 'undefined' && event.target) {
+        event.target.classList.add('active');
+    } else {
+        // 프로그래밍 방식 호출 - 첫 번째 탭 활성화
+        const firstTab = document.querySelector('.tab');
+        if (firstTab) firstTab.classList.add('active');
+    }
 
     showTabContent(category);
 }
