@@ -17,9 +17,9 @@ let currentUser = null;
 let assetsListener = null;
 let historyListener = null;
 
-// 리다이렉트 중복 방지 플래그
-let isRedirecting = false;
-let isInitialized = false;
+// 리다이렉트 중복 방지 플래그 (메인 페이지용)
+let mainPageRedirecting = false;
+let mainPageInitialized = false;
 
 // 초기화
 document.addEventListener('DOMContentLoaded', function() {
@@ -38,9 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (user) {
             // 로그인 상태
-            if (!isInitialized) {
+            if (!mainPageInitialized) {
                 console.log('[DEBUG] 초기화 시작');
-                isInitialized = true;
+                mainPageInitialized = true;
                 currentUser = user;
                 displayUserInfo(currentUser);
 
@@ -59,8 +59,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // 로그인 안 됨 - login.html로 이동
             console.log('[DEBUG] 로그인 안 됨, 리다이렉트 시도');
-            if (!isRedirecting) {
-                isRedirecting = true;
+            if (!mainPageRedirecting) {
+                mainPageRedirecting = true;
                 console.log('[DEBUG] login.html로 리다이렉트');
                 window.location.replace('login.html');
             } else {
