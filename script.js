@@ -425,3 +425,88 @@ window.onclick = function(event) {
         closeModal();
     }
 }
+
+// CSV로 내보내기
+function exportToCSV() {
+    const categoryNames = {
+        cash: '현금/예금',
+        stock: '주식/펀드',
+        crypto: '암호화폐',
+        realEstate: '부동산/기타'
+    };
+
+    // CSV 헤더
+    let csv = '\uFEFF카테고리,항목명,금액,메모\n'; // \uFEFF는 UTF-8 BOM
+
+    // 데이터 추가
+    Object.keys(assets).forEach(category => {
+        assets[category].forEach(item => {
+            const row = [
+                categoryNames[category],
+                item.name,
+                item.amount,
+                item.note || ''
+            ];
+            csv += row.map(field => `"${field}"`).join(',') + '\n';
+        });
+    });
+
+    // 다운로드
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `자산현황_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+// 엑셀로 내보내기 (HTML 테이블 방식)
+function exportToExcel() {
+    const categoryNames = {
+        cash: '현금/예금',
+        stock: '주식/펀드',
+        crypto: '암호화폐',
+        realEstate: '부동산/기타'
+    };
+
+    // HTML 테이블 생성
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="utf-8"><title>자산 현황</title></head>';
+    html += '<body>';
+    html += '<table border="1">';
+
+    // 헤더
+    html += '<tr><th>카테고리</th><th>항목명</th><th>금액</th><th>메모</th></tr>';
+
+    // 데이터
+    Object.keys(assets).forEach(category => {
+        assets[category].forEach(item => {
+            html += '<tr>';
+            html += `<td>${categoryNames[category]}</td>`;
+            html += `<td>${item.name}</td>`;
+            html += `<td>${item.amount}</td>`;
+            html += `<td>${item.note || ''}</td>`;
+            html += '</tr>';
+        });
+    });
+
+    // 합계 행
+    html += '<tr style="font-weight:bold;background-color:#f0f0f0;">';
+    html += '<td colspan="2">총 자산</td>';
+    html += `<td>${calculateTotal()}</td>`;
+    html += '<td></td>';
+    html += '</tr>';
+
+    html += '</table>';
+    html += '</body></html>';
+
+    // 다운로드
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `자산현황_${new Date().toISOString().split('T')[0]}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
