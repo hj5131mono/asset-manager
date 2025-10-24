@@ -23,17 +23,23 @@ let isInitialized = false;
 
 // 초기화
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[DEBUG] DOMContentLoaded - 페이지 로드 시작');
+
     // Firebase 초기화
     if (!initFirebase()) {
         alert('Firebase 설정이 필요합니다. firebase-config.js를 확인하세요.');
         return;
     }
+    console.log('[DEBUG] Firebase 초기화 완료');
 
     // 인증 상태 확인 (리스너 방식으로 변경)
     auth.onAuthStateChanged(user => {
+        console.log('[DEBUG] onAuthStateChanged 호출됨, user:', user ? user.email : 'null');
+
         if (user) {
             // 로그인 상태
             if (!isInitialized) {
+                console.log('[DEBUG] 초기화 시작');
                 isInitialized = true;
                 currentUser = user;
                 displayUserInfo(currentUser);
@@ -46,12 +52,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // 폼 제출 이벤트
                 document.getElementById('assetForm').addEventListener('submit', handleFormSubmit);
+                console.log('[DEBUG] 초기화 완료');
+            } else {
+                console.log('[DEBUG] 이미 초기화됨 - 중복 실행 방지');
             }
         } else {
             // 로그인 안 됨 - login.html로 이동
+            console.log('[DEBUG] 로그인 안 됨, 리다이렉트 시도');
             if (!isRedirecting) {
                 isRedirecting = true;
+                console.log('[DEBUG] login.html로 리다이렉트');
                 window.location.replace('login.html');
+            } else {
+                console.log('[DEBUG] 이미 리다이렉트 중 - 중복 방지');
             }
         }
     });
@@ -74,18 +87,25 @@ function displayUserInfo(user) {
 
 // Firebase에서 데이터 로드
 function loadDataFromFirebase() {
-    if (!currentUser) return;
-
-    // 이미 리스너가 등록되어 있으면 중복 등록 방지
-    if (assetsListener || historyListener) {
+    console.log('[DEBUG] loadDataFromFirebase 호출');
+    if (!currentUser) {
+        console.log('[DEBUG] currentUser 없음, 종료');
         return;
     }
 
+    // 이미 리스너가 등록되어 있으면 중복 등록 방지
+    if (assetsListener || historyListener) {
+        console.log('[DEBUG] 리스너 이미 등록됨, 중복 방지');
+        return;
+    }
+
+    console.log('[DEBUG] Firebase 리스너 등록 시작');
     const assetsRef = database.ref('assets');
     const historyRef = database.ref('history');
 
     // 자산 데이터 실시간 리스너
     assetsListener = assetsRef.on('value', (snapshot) => {
+        console.log('[DEBUG] assets 데이터 업데이트됨');
         const data = snapshot.val();
         if (data) {
             assets = data;
