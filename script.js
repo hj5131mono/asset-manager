@@ -76,6 +76,11 @@ function displayUserInfo(user) {
 function loadDataFromFirebase() {
     if (!currentUser) return;
 
+    // 이미 리스너가 등록되어 있으면 중복 등록 방지
+    if (assetsListener || historyListener) {
+        return;
+    }
+
     const assetsRef = database.ref('assets');
     const historyRef = database.ref('history');
 
@@ -175,6 +180,11 @@ function formatMoney(amount) {
 
 // 차트 초기화
 function initCharts() {
+    // 이미 차트가 존재하면 초기화하지 않음
+    if (pieChart || trendChart) {
+        return;
+    }
+
     const pieCtx = document.getElementById('assetPieChart').getContext('2d');
     pieChart = new Chart(pieCtx, {
         type: 'doughnut',
