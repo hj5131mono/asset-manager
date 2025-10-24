@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계좌 상세</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .account-info-box {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .info-label {
+            color: #666;
+            font-weight: 600;
+        }
+        .info-value {
+            color: #333;
+            font-weight: 500;
+        }
+        .total-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .total-label {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .total-amount {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        .asset-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .table-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .asset-row {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 100px;
+            gap: 15px;
+            align-items: center;
+        }
+        .asset-row:hover {
+            background: #f8f9fa;
+        }
+        .asset-name-col {
+            font-weight: 600;
+            color: #333;
+        }
+        .asset-type-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
+        .return-positive {
+            color: #ff6b6b;
+            font-weight: 600;
+        }
+        .return-negative {
+            color: #4dabf7;
+            font-weight: 600;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-small {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s;
+        }
+        .btn-edit {
+            background: #28a745;
+            color: white;
+        }
+        .btn-edit:hover {
+            background: #218838;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-delete:hover {
+            background: #c82333;
+        }
+        .add-asset-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+        .add-asset-btn:hover {
+            background: #5568d3;
+        }
+        @media (max-width: 768px) {
+            .asset-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header style="margin-bottom: 30px;">
+            <button onclick="location.href='accounts.html'" class="back-btn">← 계좌 목록</button>
+            <div id="accountHeader"></div>
+        </header>
+
+        <div id="accountContent"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
+    <script>
+        let accountId = null;
+        let accountData = null;
+        let currentUser = null;
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initFirebase();
+
+            // URL에서 계좌 ID 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            accountId = urlParams.get('id');
+
+            if (!accountId) {
+                alert('계좌 정보를 찾을 수 없습니다.');
+                window.location.href = 'accounts.html';
+                return;
+            }
+
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    window.location.replace('login.html');
+                    return;
+                }
+
+                currentUser = user;
+                loadAccountData();
+            });
+        });
+
+        // 계좌 데이터 로드
+        function loadAccountData() {
+            database.ref('accounts/' + accountId).on('value', (snapshot) => {
+                accountData = snapshot.val();
+                if (!accountData) {
+                    alert('계좌를 찾을 수 없습니다.');
+                    window.location.href = 'accounts.html';
+                    return;
+                }
+                renderAccountDetail();
+            });
+        }
+
+        // 계좌 상세 렌더링
+        function renderAccountDetail() {
+            // 헤더
+            document.getElementById('accountHeader').innerHTML = `
+                <h1>💼 ${accountData.name}</h1>
+            `;
+
+            // 계좌 정보 + 자산 목록
+            const total = calculateTotal();
+            const assets = accountData.assets || [];
+
+            document.getElementById('accountContent').innerHTML = `
+                <div class="account-info-box">
+                    <div class="info-row">
+                        <span class="info-label">소유자</span>
+                        <span class="info-value">${accountData.owner}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">금융사</span>
+                        <span class="info-value">${accountData.institution || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">계좌유형</span>
+                        <span class="info-value">${accountData.accountType || '-'}</span>
+                    </div>
+                    <div class="info-row" style="border-bottom: none;">
+                        <span class="info-label">자산 개수</span>
+                        <span class="info-value">${assets.length}개</span>
+                    </div>
+                </div>
+
+                <div class="total-box">
+                    <div class="total-label">계좌 총액</div>
+                    <div class="total-amount">${formatMoney(total)}</div>
+                </div>
+
+                <div class="asset-table">
+                    <div class="table-header">
+                        <span>보유 자산</span>
+                        <button class="add-asset-btn" onclick="addAsset()">+ 자산 추가</button>
+                    </div>
+                    ${assets.length === 0 ? '<div style="padding: 40px; text-align: center; color: #666;">등록된 자산이 없습니다.</div>' : renderAssetRows(assets)}
+                </div>
+            `;
+        }
+
+        // 자산 목록 렌더링
+        function renderAssetRows(assets) {
+            let html = '';
+            assets.forEach((asset, index) => {
+                const returnInfo = calculateReturn(asset);
+                const returnClass = returnInfo.profit > 0 ? 'return-positive' : returnInfo.profit < 0 ? 'return-negative' : '';
+
+                html += `
+                    <div class="asset-row">
+                        <div class="asset-name-col">
+                            ${asset.name}
+                            <span class="asset-type-badge">${asset.assetType || '기타'}</span>
+                            ${asset.ticker ? `<span class="asset-type-badge">${asset.ticker}</span>` : ''}
+                        </div>
+                        <div>${formatMoney(asset.amount)}</div>
+                        <div>${asset.purchaseAmount ? formatMoney(asset.purchaseAmount) : '-'}</div>
+                        <div class="${returnClass}">
+                            ${returnInfo.returnRate !== 0 ? `${returnInfo.returnRate > 0 ? '+' : ''}${returnInfo.returnRate.toFixed(2)}%` : '-'}
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-small btn-edit" onclick="editAsset(${index})">수정</button>
+                            <button class="btn-small btn-delete" onclick="deleteAsset(${index})">삭제</button>
+                        </div>
+                    </div>
+                `;
+            });
+            return html;
+        }
+
+        // 총액 계산
+        function calculateTotal() {
+            return (accountData.assets || []).reduce((sum, asset) => sum + (asset.amount || 0), 0);
+        }
+
+        // 수익률 계산
+        function calculateReturn(asset) {
+            if (!asset.purchaseAmount || asset.purchaseAmount === 0) {
+                return { profit: 0, returnRate: 0 };
+            }
+            const profit = asset.amount - asset.purchaseAmount;
+            const returnRate = (profit / asset.purchaseAmount) * 100;
+            return { profit, returnRate };
+        }
+
+        // 금액 포맷
+        function formatMoney(amount) {
+            return new Intl.NumberFormat('ko-KR', {
+                style: 'currency',
+                currency: 'KRW'
+            }).format(amount);
+        }
+
+        // 자산 추가
+        function addAsset() {
+            const name = prompt('자산명을 입력하세요');
+            if (!name) return;
+
+            const assetType = prompt('자산유형 (현금/예금/주식/ETF/채권/원자재/가상화폐)');
+            const amountStr = prompt('평가금액을 입력하세요');
+            if (!amountStr) return;
+
+            const amount = parseFloat(amountStr);
+            const purchaseAmountStr = prompt('매입금액을 입력하세요 (선택, 수익률 계산용)');
+
+            const newAsset = {
+                name,
+                assetType: assetType || '기타',
+                amount,
+                purchaseAmount: purchaseAmountStr ? parseFloat(purchaseAmountStr) : null,
+                ticker: '',
+                createdAt: new Date().toISOString()
+            };
+
+            const assets = accountData.assets || [];
+            assets.push(newAsset);
+
+            database.ref('accounts/' + accountId + '/assets').set(assets);
+        }
+
+        // 자산 삭제
+        function deleteAsset(index) {
+            if (!confirm('정말 삭제하시겠습니까?')) return;
+
+            const assets = accountData.assets || [];
+            assets.splice(index, 1);
+
+            database.ref('accounts/' + accountId + '/assets').set(assets);
+        }
+
+        // 자산 수정
+        function editAsset(index) {
+            const asset = accountData.assets[index];
+
+            const name = prompt('자산명', asset.name);
+            if (!name) return;
+
+            const assetType = prompt('자산유형', asset.assetType);
+            const amountStr = prompt('평가금액', asset.amount);
+            if (!amountStr) return;
+
+            const purchaseAmountStr = prompt('매입금액', asset.purchaseAmount || '');
+
+            accountData.assets[index] = {
+                ...asset,
+                name,
+                assetType: assetType || '기타',
+                amount: parseFloat(amountStr),
+                purchaseAmount: purchaseAmountStr ? parseFloat(purchaseAmountStr) : null,
+                updatedAt: new Date().toISOString()
+            };
+
+            database.ref('accounts/' + accountId + '/assets').set(accountData.assets);
+        }
+    </script>
+</body>
+</html>

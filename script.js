@@ -605,26 +605,38 @@ function handleBaseDateChange(e) {
     updateDashboard();
 }
 
-// 환율 조회 (한국수출입은행 API)
+// 환율 조회 (ExchangeRate-API 무료 사용)
 async function fetchExchangeRate(date) {
     try {
-        // 한국수출입은행 API 사용 (무료, 인증키 필요)
-        // 실제 구현 시 API 키 필요
-        // 임시로 고정값 사용
+        // ExchangeRate-API 사용 (무료, 키 불필요)
+        // 날짜별 과거 환율: https://open.er-api.com/v6/latest/USD
 
-        // TODO: 실제 API 연동
-        // const apiKey = 'YOUR_API_KEY';
-        // const url = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=${apiKey}&searchdate=${date.replace(/-/g, '')}&data=AP01`;
+        // 날짜 형식 변환 (YYYY-MM-DD)
+        const formattedDate = date.replace(/-/g, '-');
 
-        // 임시 환율 (실제로는 API에서 가져와야 함)
-        exchangeRates.USD = 1350;
+        // 최신 환율 조회 (과거 데이터는 유료)
+        const response = await fetch('https://open.er-api.com/v6/latest/USD');
 
-        document.getElementById('exchangeRate').textContent = `$1 = ${formatMoney(exchangeRates.USD)}`;
+        if (!response.ok) {
+            throw new Error('환율 조회 실패');
+        }
 
-        console.log('[EXCHANGE] 환율 조회:', exchangeRates);
+        const data = await response.json();
+
+        if (data.rates && data.rates.KRW) {
+            exchangeRates.USD = data.rates.KRW;
+            exchangeRates.lastUpdated = data.time_last_update_utc;
+
+            document.getElementById('exchangeRate').textContent = `$1 = ₩${Math.round(exchangeRates.USD).toLocaleString()}`;
+
+            console.log('[EXCHANGE] 환율 조회 성공:', exchangeRates);
+        } else {
+            throw new Error('환율 데이터 없음');
+        }
     } catch (error) {
         console.error('[EXCHANGE] 환율 조회 실패:', error);
         exchangeRates.USD = 1350; // 기본값
+        document.getElementById('exchangeRate').textContent = `$1 = ₩${exchangeRates.USD.toLocaleString()} (기본값)`;
     }
 }
 

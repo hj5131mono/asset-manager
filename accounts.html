@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계좌별 자산 관리</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .account-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .account-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .account-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .account-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+        .account-owner {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .account-type {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .account-total {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .account-assets {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .asset-count {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .add-account-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+        .add-account-card:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+        }
+        .add-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+            margin-bottom: 20px;
+        }
+        .back-btn:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header style="margin-bottom: 30px;">
+            <button onclick="location.href='index.html'" class="back-btn">← 대시보드로</button>
+            <h1>💼 계좌별 자산 관리</h1>
+            <p style="color: #666; margin-top: 10px;">계좌를 클릭하여 자산을 관리하세요</p>
+        </header>
+
+        <div id="accountsGrid" class="account-grid">
+            <!-- 계좌 카드들이 동적으로 생성됨 -->
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
+    <script>
+        let accounts = {};
+        let currentUser = null;
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initFirebase();
+
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    window.location.replace('login.html');
+                    return;
+                }
+
+                currentUser = user;
+                loadAccounts();
+            });
+        });
+
+        // 계좌 데이터 로드
+        function loadAccounts() {
+            database.ref('accounts').on('value', (snapshot) => {
+                accounts = snapshot.val() || {};
+                renderAccounts();
+            });
+        }
+
+        // 계좌 카드 렌더링
+        function renderAccounts() {
+            const grid = document.getElementById('accountsGrid');
+            grid.innerHTML = '';
+
+            // 기존 계좌들
+            Object.keys(accounts).forEach(accountId => {
+                const account = accounts[accountId];
+                const card = createAccountCard(accountId, account);
+                grid.appendChild(card);
+            });
+
+            // 계좌 추가 카드
+            const addCard = document.createElement('div');
+            addCard.className = 'account-card add-account-card';
+            addCard.innerHTML = `
+                <div class="add-icon">+</div>
+                <div>새 계좌 추가</div>
+            `;
+            addCard.onclick = () => createNewAccount();
+            grid.appendChild(addCard);
+        }
+
+        // 계좌 카드 생성
+        function createAccountCard(accountId, account) {
+            const card = document.createElement('div');
+            card.className = 'account-card';
+
+            const total = calculateAccountTotal(account.assets || []);
+            const assetCount = (account.assets || []).length;
+
+            card.innerHTML = `
+                <div class="account-header">
+                    <div>
+                        <div class="account-name">${account.name}</div>
+                        <div class="account-type">${account.institution} · ${account.accountType}</div>
+                    </div>
+                    <span class="account-owner">${account.owner}</span>
+                </div>
+                <div class="account-total">${formatMoney(total)}</div>
+                <div class="account-assets">
+                    <span class="asset-count">📊 ${assetCount}개 자산</span>
+                </div>
+            `;
+
+            card.onclick = () => {
+                window.location.href = `account-detail.html?id=${accountId}`;
+            };
+
+            return card;
+        }
+
+        // 계좌 총액 계산
+        function calculateAccountTotal(assets) {
+            return assets.reduce((sum, asset) => sum + (asset.amount || 0), 0);
+        }
+
+        // 금액 포맷
+        function formatMoney(amount) {
+            return new Intl.NumberFormat('ko-KR', {
+                style: 'currency',
+                currency: 'KRW'
+            }).format(amount);
+        }
+
+        // 새 계좌 생성
+        function createNewAccount() {
+            const name = prompt('계좌 이름을 입력하세요 (예: 신한은행 입출금)');
+            if (!name) return;
+
+            const owner = prompt('소유자를 입력하세요 (희준/영은)');
+            if (!owner) return;
+
+            const institution = prompt('금융사를 입력하세요');
+            const accountType = prompt('계좌유형을 입력하세요 (예: 입출금, 증권, 연금)');
+
+            const accountId = Date.now().toString();
+            const accountData = {
+                name,
+                owner,
+                institution: institution || '',
+                accountType: accountType || '',
+                assets: [],
+                createdAt: new Date().toISOString()
+            };
+
+            database.ref('accounts/' + accountId).set(accountData);
+        }
+    </script>
+</body>
+</html>
