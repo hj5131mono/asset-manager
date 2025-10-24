@@ -2,6 +2,7 @@
 
 // 리다이렉트 중복 방지 플래그
 let isRedirecting = false;
+let authUnsubscribe = null;
 
 // 페이지 로드시 Firebase 초기화
 document.addEventListener('DOMContentLoaded', function() {
@@ -11,10 +12,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 이미 로그인되어 있는지 확인
-    auth.onAuthStateChanged(user => {
+    authUnsubscribe = auth.onAuthStateChanged(user => {
         if (user && !isRedirecting) {
             // 이미 로그인되어 있으면 메인 페이지로 이동
             isRedirecting = true;
+            console.log('[LOGIN DEBUG] 이미 로그인됨, index.html로 이동');
+
+            // 리스너 해제
+            if (authUnsubscribe) {
+                authUnsubscribe();
+            }
+
             window.location.replace('index.html');
         }
     });
@@ -64,8 +72,14 @@ async function loginWithGoogle() {
             });
         }
 
-        // 메인 페이지로 이동
-        window.location.href = 'index.html';
+        // 리스너 해제 후 메인 페이지로 이동
+        console.log('[LOGIN DEBUG] 로그인 성공, index.html로 이동');
+
+        if (authUnsubscribe) {
+            authUnsubscribe();
+        }
+
+        window.location.replace('index.html');
 
     } catch (error) {
         console.error('로그인 오류:', error);
