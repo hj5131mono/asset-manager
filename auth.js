@@ -1,82 +1,69 @@
-// 인증 관련 JavaScript - login.html 전용
+// 인증 관련 JavaScript - 이메일/비밀번호 로그인
 
-// 페이지 로드시 Firebase 초기화
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[LOGIN] 로그인 페이지 로드');
+    initFirebase();
 
-    if (!initFirebase()) {
-        showError('Firebase 초기화에 실패했습니다. firebase-config.js 파일을 확인하세요.');
-        return;
-    }
-
-    console.log('[LOGIN] Firebase 초기화 완료');
-
-    // 구글 로그인 버튼 이벤트만 등록 (자동 리다이렉트 제거)
-    const loginBtn = document.getElementById('googleLoginBtn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', loginWithGoogle);
-        console.log('[LOGIN] 로그인 버튼 이벤트 등록 완료');
+    // 로그인 폼 처리
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
     }
 });
 
-// 구글 로그인
-async function loginWithGoogle() {
-    const loading = document.getElementById('loading');
-    const errorMessage = document.getElementById('errorMessage');
+// 로그인 처리
+async function handleLogin(e) {
+    e.preventDefault();
 
-    console.log('[LOGIN] 구글 로그인 시도');
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const loginBtn = document.getElementById('loginBtn');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+
+    errorMessage.style.display = 'none';
+    successMessage.style.display = 'none';
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = '로그인 중...';
 
     try {
-        loading.style.display = 'block';
-        errorMessage.style.display = 'none';
+        // Firebase 이메일/비밀번호 로그인
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
 
-        const provider = new firebase.auth.GoogleAuthProvider();
-        provider.setCustomParameters({
-            prompt: 'select_account'
+        console.log('로그인 성공:', user.email);
+
+        // 마지막 로그인 시간 업데이트
+        await database.ref('users/' + user.uid).update({
+            lastLogin: firebase.database.ServerValue.TIMESTAMP
         });
 
-        const result = await auth.signInWithPopup(provider);
-        const user = result.user;
+        successMessage.textContent = '로그인 성공! 이동합니다...';
+        successMessage.style.display = 'block';
 
-        console.log('[LOGIN] 로그인 성공:', user.email);
-
-        // 사용자 정보를 데이터베이스에 저장
-        const userRef = database.ref('users/' + user.uid);
-        const snapshot = await userRef.once('value');
-
-        if (!snapshot.exists()) {
-            await userRef.set({
-                email: user.email,
-                displayName: user.displayName,
-                photoURL: user.photoURL,
-                createdAt: firebase.database.ServerValue.TIMESTAMP,
-                lastLogin: firebase.database.ServerValue.TIMESTAMP
-            });
-        } else {
-            await userRef.update({
-                lastLogin: firebase.database.ServerValue.TIMESTAMP
-            });
-        }
-
-        console.log('[LOGIN] 사용자 정보 저장 완료, index.html로 이동');
-
-        // 메인 페이지로 이동
-        window.location.replace('index.html');
+        // index.html로 이동
+        setTimeout(() => {
+            window.location.replace('index.html');
+        }, 1000);
 
     } catch (error) {
-        console.error('[LOGIN] 로그인 오류:', error);
-        loading.style.display = 'none';
+        console.error('로그인 오류:', error);
+        loginBtn.disabled = false;
+        loginBtn.textContent = '로그인';
 
         let errorMsg = '로그인에 실패했습니다.';
-        if (error.code === 'auth/popup-closed-by-user') {
-            errorMsg = '로그인 팝업이 닫혔습니다.';
-        } else if (error.code === 'auth/popup-blocked') {
-            errorMsg = '팝업이 차단되었습니다. 브라우저 설정을 확인하세요.';
-        } else if (error.code === 'auth/unauthorized-domain') {
-            errorMsg = 'Firebase 설정에서 이 도메인을 허용해야 합니다.';
+        if (error.code === 'auth/user-not-found') {
+            errorMsg = '존재하지 않는 계정입니다.';
+        } else if (error.code === 'auth/wrong-password') {
+            errorMsg = '비밀번호가 올바르지 않습니다.';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMsg = '유효하지 않은 이메일 형식입니다.';
+        } else if (error.code === 'auth/too-many-requests') {
+            errorMsg = '너무 많은 로그인 시도입니다. 잠시 후 다시 시도하세요.';
         }
 
-        showError(errorMsg);
+        errorMessage.textContent = errorMsg;
+        errorMessage.style.display = 'block';
     }
 }
 
@@ -89,23 +76,4 @@ async function logout() {
         console.error('로그아웃 오류:', error);
         alert('로그아웃에 실패했습니다.');
     }
-}
-
-// 에러 메시지 표시
-function showError(message) {
-    const errorMessage = document.getElementById('errorMessage');
-    if (errorMessage) {
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
-    }
-}
-
-// 현재 사용자 정보 가져오기
-function getCurrentUser() {
-    return auth.currentUser;
-}
-
-// 사용자 인증 상태 확인
-function isAuthenticated() {
-    return auth.currentUser !== null;
 }
