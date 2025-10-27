@@ -26,6 +26,8 @@
                     <div class="user-info">
                         <img id="userPhoto" src="" alt="" style="display:none;">
                         <span id="userName"></span>
+                        <button onclick="location.href='all-assets.html'" class="rawdata-btn" title="전체 자산을 19개 컬럼으로 상세 분석">📊 로데이터</button>
+                        <button onclick="captureSnapshot()" class="snapshot-btn" title="현재 포트폴리오를 저장하여 추이 분석에 활용">📸 스냅샷</button>
                         <button onclick="location.href='asset-template.html'" class="template-btn">📋 템플릿</button>
                         <button onclick="document.getElementById('excelUpload').click()" class="upload-btn">📤 업로드</button>
                         <input type="file" id="excelUpload" accept=".xls,.xlsx,.csv" style="display:none;" onchange="handleExcelUpload(event)">

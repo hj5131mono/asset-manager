@@ -631,17 +631,21 @@ function handleBaseDateChange(e) {
     updateDashboard();
 }
 
-// 환율 조회 (ExchangeRate-API 무료 사용)
+// 환율 조회 (한국은행 API)
 async function fetchExchangeRate(date) {
     try {
-        // ExchangeRate-API 사용 (무료, 키 불필요)
-        // 날짜별 과거 환율: https://open.er-api.com/v6/latest/USD
+        const apiKey = 'Z5CBL8XPHXY06Y3YBKT2';
 
-        // 날짜 형식 변환 (YYYY-MM-DD)
-        const formattedDate = date.replace(/-/g, '-');
+        // 날짜 형식 변환 (YYYYMMDD)
+        const formattedDate = date.replace(/-/g, '');
 
-        // 최신 환율 조회 (과거 데이터는 유료)
-        const response = await fetch('https://open.er-api.com/v6/latest/USD');
+        // 한국은행 API: 일별 환율
+        // https://ecos.bok.or.kr/api/StatisticSearch/{인증키}/json/kr/1/1/036Y001/DD/{날짜}/{날짜}/0000001/?/?
+        const url = `https://ecos.bok.or.kr/api/StatisticSearch/${apiKey}/json/kr/1/1/036Y001/DD/${formattedDate}/${formattedDate}/0000001`;
+
+        console.log('[EXCHANGE] 환율 조회 요청:', formattedDate);
+
+        const response = await fetch(url);
 
         if (!response.ok) {
             throw new Error('환율 조회 실패');
@@ -649,19 +653,66 @@ async function fetchExchangeRate(date) {
 
         const data = await response.json();
 
-        if (data.rates && data.rates.KRW) {
-            exchangeRates.USD = data.rates.KRW;
-            exchangeRates.lastUpdated = data.time_last_update_utc;
+        // 응답 확인
+        if (data.StatisticSearch && data.StatisticSearch.row && data.StatisticSearch.row.length > 0) {
+            const rate = parseFloat(data.StatisticSearch.row[0].DATA_VALUE);
+            exchangeRates.USD = rate;
+            exchangeRates.lastUpdated = date;
 
-            document.getElementById('exchangeRate').textContent = `$1 = ₩${Math.round(exchangeRates.USD).toLocaleString()}`;
+            document.getElementById('exchangeRate').textContent = `$1 = ₩${Math.round(rate).toLocaleString()} (${date})`;
 
-            console.log('[EXCHANGE] 환율 조회 성공:', exchangeRates);
+            console.log('[EXCHANGE] 환율 조회 성공:', rate);
         } else {
-            throw new Error('환율 데이터 없음');
+            // 데이터 없음 (주말/공휴일) - 이전 영업일 찾기
+            console.log('[EXCHANGE] 해당일 데이터 없음, 이전 영업일 검색');
+            await fetchPreviousBusinessDayRate(date);
         }
     } catch (error) {
         console.error('[EXCHANGE] 환율 조회 실패:', error);
         exchangeRates.USD = 1350; // 기본값
+        document.getElementById('exchangeRate').textContent = `$1 = ₩${exchangeRates.USD.toLocaleString()} (기본값)`;
+    }
+}
+
+// 이전 영업일 환율 조회 (주말/공휴일 처리)
+async function fetchPreviousBusinessDayRate(date) {
+    const apiKey = 'Z5CBL8XPHXY06Y3YBKT2';
+
+    // 최대 7일 전까지 검색
+    const targetDate = new Date(date);
+    const sevenDaysAgo = new Date(targetDate);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const startDate = sevenDaysAgo.toISOString().split('T')[0].replace(/-/g, '');
+    const endDate = date.replace(/-/g, '');
+
+    try {
+        const url = `https://ecos.bok.or.kr/api/StatisticSearch/${apiKey}/json/kr/1/10/036Y001/DD/${startDate}/${endDate}/0000001`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.StatisticSearch && data.StatisticSearch.row && data.StatisticSearch.row.length > 0) {
+            // 가장 최근 데이터 사용
+            const latestData = data.StatisticSearch.row[data.StatisticSearch.row.length - 1];
+            const rate = parseFloat(latestData.DATA_VALUE);
+            const actualDate = latestData.TIME;
+
+            exchangeRates.USD = rate;
+            exchangeRates.lastUpdated = actualDate;
+
+            // YYYYMMDD → YYYY-MM-DD 변환
+            const formattedActualDate = actualDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+
+            document.getElementById('exchangeRate').textContent = `$1 = ₩${Math.round(rate).toLocaleString()} (${formattedActualDate})`;
+
+            console.log('[EXCHANGE] 이전 영업일 환율 사용:', formattedActualDate, rate);
+        } else {
+            throw new Error('이전 영업일 환율도 없음');
+        }
+    } catch (error) {
+        console.error('[EXCHANGE] 이전 영업일 조회 실패:', error);
+        exchangeRates.USD = 1350;
         document.getElementById('exchangeRate').textContent = `$1 = ₩${exchangeRates.USD.toLocaleString()} (기본값)`;
     }
 }
@@ -822,4 +873,87 @@ function mapAssetTypeToCategory(assetType) {
     };
 
     return mapping[assetType] || 'cash';
+}
+
+// 포트폴리오 스냅샷 캡처
+async function captureSnapshot() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // 이미 오늘 스냅샷이 있는지 확인
+        const existingSnapshot = await database.ref('snapshots/' + today).once('value');
+
+        if (existingSnapshot.exists()) {
+            const overwrite = confirm('오늘 날짜의 스냅샷이 이미 존재합니다.\n덮어쓰시겠습니까?');
+            if (!overwrite) return;
+        }
+
+        // 현재 포트폴리오 전체 복사
+        const snapshot = {
+            date: today,
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            exchangeRate: exchangeRates.USD,
+            assets: JSON.parse(JSON.stringify(assets)), // 깊은 복사
+            totals: {
+                cash: calculateCategoryTotal('cash'),
+                stock: calculateCategoryTotal('stock'),
+                crypto: calculateCategoryTotal('crypto'),
+                realEstate: calculateCategoryTotal('realEstate'),
+                total: calculateTotal()
+            },
+            metadata: {
+                totalAssetCount: Object.values(assets).reduce((sum, arr) => sum + arr.length, 0),
+                byOwner: {
+                    희준: calculateOwnerTotal('희준'),
+                    영은: calculateOwnerTotal('영은')
+                },
+                byCurrency: {
+                    KRW: calculateCurrencyTotal('KRW'),
+                    USD: calculateCurrencyTotal('USD')
+                }
+            }
+        };
+
+        // Firebase에 저장
+        await database.ref('snapshots/' + today).set(snapshot);
+
+        // history도 함께 업데이트 (기존 방식 호환)
+        await database.ref('history/' + today).set(snapshot.totals.total);
+
+        console.log('[SNAPSHOT] 스냅샷 저장 완료:', today);
+        alert(`✅ ${today} 포트폴리오 스냅샷이 저장되었습니다!\n\n총 자산: ${formatMoney(snapshot.totals.total)}\n자산 항목 수: ${snapshot.metadata.totalAssetCount}개`);
+
+        // 차트 업데이트
+        updateCharts();
+
+    } catch (error) {
+        console.error('[SNAPSHOT] 스냅샷 저장 실패:', error);
+        alert('스냅샷 저장에 실패했습니다.');
+    }
+}
+
+// 소유자별 총 자산 계산
+function calculateOwnerTotal(owner) {
+    let total = 0;
+    Object.keys(assets).forEach(category => {
+        assets[category].forEach(item => {
+            if (item.owner === owner) {
+                total += convertToKRW(item.amount, item.currency || 'KRW');
+            }
+        });
+    });
+    return total;
+}
+
+// 통화별 총 자산 계산
+function calculateCurrencyTotal(currency) {
+    let total = 0;
+    Object.keys(assets).forEach(category => {
+        assets[category].forEach(item => {
+            if ((item.currency || 'KRW') === currency) {
+                total += item.amount;
+            }
+        });
+    });
+    return total;
 }

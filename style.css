@@ -114,6 +114,43 @@ header h1 {
     font-weight: 500;
 }
 
+.rawdata-btn {
+    background: #fd7e14;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s;
+    margin-left: 5px;
+    font-weight: 600;
+}
+
+.rawdata-btn:hover {
+    background: #e8590c;
+}
+
+.snapshot-btn {
+    background: #6f42c1;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s;
+    margin-left: 5px;
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(111, 66, 193, 0.3);
+}
+
+.snapshot-btn:hover {
+    background: #5a32a3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(111, 66, 193, 0.4);
+}
+
 .template-btn {
     background: #17a2b8;
     color: white;

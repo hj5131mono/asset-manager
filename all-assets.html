@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전체 자산 로데이터 - 자산 관리</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        .all-assets-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px auto;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-section h1 {
+            margin: 0;
+            color: #333;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-section select, .filter-section input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        .assets-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            min-width: 1800px;
+        }
+
+        .assets-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .assets-table th {
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+            border-right: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .assets-table th:last-child {
+            border-right: none;
+        }
+
+        .assets-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        .assets-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .positive {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .negative {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .owner-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .owner-희준 {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .owner-영은 {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .currency-badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .currency-KRW {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .currency-USD {
+            background: #e1f5fe;
+            color: #0277bd;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .summary-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .summary-card p {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
+        .export-excel-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .export-excel-btn:hover {
+            background: #218838;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="all-assets-container">
+            <div class="header-section">
+                <h1>📊 전체 자산 로데이터</h1>
+                <div class="header-controls">
+                    <button onclick="exportFullDataToExcel()" class="export-excel-btn">📥 Excel 다운로드</button>
+                    <a href="index.html" class="back-btn">← 대시보드</a>
+                </div>
+            </div>
+
+            <div class="summary-cards" id="summaryCards">
+                <div class="summary-card">
+                    <h3>총 자산</h3>
+                    <p id="totalAssets">-</p>
+                </div>
+                <div class="summary-card">
+                    <h3>자산 항목 수</h3>
+                    <p id="totalCount">-</p>
+                </div>
+                <div class="summary-card">
+                    <h3>평균 수익률</h3>
+                    <p id="avgReturn">-</p>
+                </div>
+                <div class="summary-card">
+                    <h3>총 투자원금</h3>
+                    <p id="totalInvestment">-</p>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <label>
+                    소유자:
+                    <select id="filterOwner" onchange="filterAssets()">
+                        <option value="all">전체</option>
+                        <option value="희준">희준</option>
+                        <option value="영은">영은</option>
+                    </select>
+                </label>
+
+                <label>
+                    통화:
+                    <select id="filterCurrency" onchange="filterAssets()">
+                        <option value="all">전체</option>
+                        <option value="KRW">KRW</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </label>
+
+                <label>
+                    국가:
+                    <select id="filterCountry" onchange="filterAssets()">
+                        <option value="all">전체</option>
+                        <option value="한국">한국</option>
+                        <option value="미국">미국</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </label>
+
+                <label>
+                    자산유형:
+                    <select id="filterAssetType" onchange="filterAssets()">
+                        <option value="all">전체</option>
+                        <option value="cash">현금/예금</option>
+                        <option value="stock">주식/ETF</option>
+                        <option value="crypto">채권/원자재</option>
+                        <option value="realEstate">가상화폐</option>
+                    </select>
+                </label>
+
+                <button onclick="resetFilters()" class="back-btn">초기화</button>
+            </div>
+
+            <div id="tableContainer">
+                <div class="loading">데이터 로딩 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script src="session-manager.js"></script>
+    <script src="all-assets.js"></script>
+</body>
+</html>
