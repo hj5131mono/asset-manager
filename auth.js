@@ -10,6 +10,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// 허용된 이메일 목록 (화이트리스트)
+const ALLOWED_EMAILS = [
+    'ahnhj1996@naver.com'
+    // 다른 이메일을 추가하려면 여기에 추가:
+    // 'partner@example.com'
+];
+
 // 로그인 처리
 async function handleLogin(e) {
     e.preventDefault();
@@ -23,6 +30,14 @@ async function handleLogin(e) {
     errorMessage.style.display = 'none';
     successMessage.style.display = 'none';
 
+    // 이메일 화이트리스트 체크 (로그인 시도 전)
+    if (!ALLOWED_EMAILS.includes(email)) {
+        errorMessage.textContent = '접근 권한이 없는 이메일입니다. 관리자에게 문의하세요.';
+        errorMessage.style.display = 'block';
+        console.warn('[SECURITY] 허용되지 않은 이메일 로그인 시도:', email);
+        return;
+    }
+
     loginBtn.disabled = true;
     loginBtn.textContent = '로그인 중...';
 
@@ -31,23 +46,46 @@ async function handleLogin(e) {
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        console.log('로그인 성공:', user.email);
+        console.log('[AUTH] 로그인 성공:', user.email);
+
+        // 접근 로그 기록
+        await database.ref('users/' + user.uid + '/accessLog').push({
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            action: 'login',
+            userAgent: navigator.userAgent,
+            ip: 'client-side' // 실제 IP는 서버에서만 가능
+        });
 
         // 마지막 로그인 시간 업데이트
         await database.ref('users/' + user.uid).update({
-            lastLogin: firebase.database.ServerValue.TIMESTAMP
+            lastLogin: firebase.database.ServerValue.TIMESTAMP,
+            email: user.email
         });
 
-        successMessage.textContent = '로그인 성공! 이동합니다...';
-        successMessage.style.display = 'block';
+        // 2FA 활성화 여부 확인
+        const tfaSnapshot = await database.ref('users/' + user.uid + '/2fa').once('value');
+        const tfaData = tfaSnapshot.val();
 
-        // index.html로 이동
-        setTimeout(() => {
-            window.location.replace('index.html');
-        }, 1000);
+        if (tfaData && tfaData.enabled) {
+            // 2FA 인증 페이지로 이동
+            successMessage.textContent = '로그인 성공! 2단계 인증으로 이동합니다...';
+            successMessage.style.display = 'block';
+
+            setTimeout(() => {
+                window.location.replace('2fa-verify.html');
+            }, 1000);
+        } else {
+            // 2FA 미설정 시 바로 메인으로
+            successMessage.textContent = '로그인 성공! 이동합니다...';
+            successMessage.style.display = 'block';
+
+            setTimeout(() => {
+                window.location.replace('index.html');
+            }, 1000);
+        }
 
     } catch (error) {
-        console.error('로그인 오류:', error);
+        console.error('[AUTH] 로그인 오류:', error);
         loginBtn.disabled = false;
         loginBtn.textContent = '로그인';
 
@@ -60,6 +98,8 @@ async function handleLogin(e) {
             errorMsg = '유효하지 않은 이메일 형식입니다.';
         } else if (error.code === 'auth/too-many-requests') {
             errorMsg = '너무 많은 로그인 시도입니다. 잠시 후 다시 시도하세요.';
+        } else if (error.code === 'auth/invalid-credential') {
+            errorMsg = '이메일 또는 비밀번호가 올바르지 않습니다.';
         }
 
         errorMessage.textContent = errorMsg;

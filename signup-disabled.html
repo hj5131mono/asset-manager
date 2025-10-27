@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 비활성화 - 자산 관리</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .message-container {
+            background: white;
+            padding: 60px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-box li {
+            padding: 5px 0;
+            color: #555;
+        }
+
+        .info-box li:before {
+            content: "✓ ";
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="message-container">
+        <div class="icon">🔒</div>
+        <h1>회원가입이 비활성화되었습니다</h1>
+        <p>
+            보안을 위해 자산 관리 시스템은 <strong>초대된 사용자만</strong> 접근할 수 있습니다.
+        </p>
+
+        <div class="info-box">
+            <h3>💡 계정이 필요하신가요?</h3>
+            <ul>
+                <li>관리자에게 계정 생성을 요청하세요</li>
+                <li>이메일로 로그인 정보를 받으세요</li>
+                <li>첫 로그인 시 비밀번호를 변경하세요</li>
+            </ul>
+        </div>
+
+        <p style="font-size: 0.9em; color: #999;">
+            📧 관리자 연락: ahnhj1996@naver.com
+        </p>
+
+        <a href="login.html" class="back-btn">로그인 페이지로 돌아가기</a>
+    </div>
+
+    <script>
+        // signup.html로 직접 접근 시 이 페이지로 리다이렉트
+        console.log('[SECURITY] 회원가입 페이지 접근 차단');
+    </script>
+</body>
+</html>

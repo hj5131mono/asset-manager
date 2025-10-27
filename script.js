@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     // 인증 상태 확인 - 단 한 번만 처리
-    const unsubscribe = auth.onAuthStateChanged(user => {
+    const unsubscribe = auth.onAuthStateChanged(async user => {
         console.log('[AUTH] 인증 상태 변경:', user ? user.email : '로그인 안 됨');
 
         if (!user) {
@@ -62,6 +62,27 @@ document.addEventListener('DOMContentLoaded', function() {
             auth.signOut();
             window.location.replace('login.html');
             return;
+        }
+
+        // 2FA 확인
+        try {
+            const tfaSnapshot = await database.ref('users/' + user.uid + '/2fa').once('value');
+            const tfaData = tfaSnapshot.val();
+
+            if (tfaData && tfaData.enabled) {
+                // 2FA 인증 완료 여부 확인
+                const verified = sessionStorage.getItem('2fa_verified');
+                const verifiedAt = sessionStorage.getItem('2fa_verified_at');
+
+                // 2FA 인증이 안 되어있거나 1시간 지났으면 재인증
+                if (!verified || !verifiedAt || (Date.now() - parseInt(verifiedAt) > 3600000)) {
+                    console.log('[2FA] 2단계 인증 필요');
+                    window.location.replace('2fa-verify.html');
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('[2FA] 확인 오류:', error);
         }
 
         // 이미 초기화되었으면 무시
@@ -488,8 +509,13 @@ async function saveToFirebase() {
 // 로그아웃
 async function logout() {
     try {
-        await auth.signOut();
-        window.location.replace('login.html');
+        // 세션 관리가 있으면 그걸 사용
+        if (typeof logoutWithSession !== 'undefined') {
+            await logoutWithSession();
+        } else {
+            await auth.signOut();
+            window.location.replace('login.html');
+        }
     } catch (error) {
         console.error('로그아웃 오류:', error);
         alert('로그아웃에 실패했습니다.');

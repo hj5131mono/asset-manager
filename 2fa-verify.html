@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인 - 자산 관리</title>
+    <title>2단계 인증 - 자산 관리</title>
     <style>
         * {
             margin: 0;
@@ -21,7 +21,7 @@
             padding: 20px;
         }
 
-        .login-container {
+        .verify-container {
             background: white;
             padding: 40px;
             border-radius: 20px;
@@ -30,17 +30,23 @@
             width: 100%;
         }
 
-        .login-container h1 {
+        .verify-container h1 {
             color: #333;
             margin-bottom: 10px;
             font-size: 2em;
             text-align: center;
         }
 
-        .login-container p {
+        .verify-container p {
             color: #666;
             margin-bottom: 30px;
             text-align: center;
+        }
+
+        .icon {
+            text-align: center;
+            font-size: 4em;
+            margin-bottom: 20px;
         }
 
         .form-group {
@@ -59,7 +65,9 @@
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 8px;
-            font-size: 1em;
+            font-size: 1.5em;
+            text-align: center;
+            letter-spacing: 0.3em;
             transition: border-color 0.3s;
         }
 
@@ -68,7 +76,7 @@
             border-color: #667eea;
         }
 
-        .login-btn {
+        .verify-btn {
             width: 100%;
             background: #667eea;
             color: white;
@@ -82,11 +90,11 @@
             margin-top: 10px;
         }
 
-        .login-btn:hover {
+        .verify-btn:hover {
             background: #5568d3;
         }
 
-        .login-btn:disabled {
+        .verify-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
@@ -101,60 +109,42 @@
             text-align: center;
         }
 
-        .success-message {
-            color: #28a745;
-            margin-top: 15px;
-            padding: 12px;
-            background: #d4edda;
-            border-radius: 8px;
-            display: none;
-            text-align: center;
-        }
-
-        .link-text {
+        .help-text {
             text-align: center;
             margin-top: 20px;
+            font-size: 0.9em;
             color: #666;
         }
 
-        .link-text a {
+        .help-text a {
             color: #667eea;
             text-decoration: none;
-            font-weight: 600;
         }
 
-        .link-text a:hover {
+        .help-text a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <h1>💰 자산 관리</h1>
-        <p>이메일과 비밀번호로 로그인하세요</p>
+    <div class="verify-container">
+        <div class="icon">🔐</div>
+        <h1>2단계 인증</h1>
+        <p>인증 앱의 6자리 코드를 입력하세요</p>
 
-        <form id="loginForm">
+        <form id="verifyForm">
             <div class="form-group">
-                <label for="email">이메일</label>
-                <input type="email" id="email" required placeholder="example@email.com">
+                <label for="code">인증 코드</label>
+                <input type="text" id="code" required placeholder="000000" maxlength="6" pattern="[0-9]{6}" autocomplete="off" autofocus>
             </div>
 
-            <div class="form-group">
-                <label for="password">비밀번호</label>
-                <input type="password" id="password" required placeholder="비밀번호 입력">
-            </div>
-
-            <button type="submit" class="login-btn" id="loginBtn">로그인</button>
+            <button type="submit" class="verify-btn" id="verifyBtn">확인</button>
         </form>
 
         <div class="error-message" id="errorMessage"></div>
-        <div class="success-message" id="successMessage"></div>
 
-        <div class="link-text" style="display: none;">
-            계정이 없으신가요? <a href="signup.html">회원가입</a>
-        </div>
-        <div class="link-text">
-            <small style="color: #999;">🔒 보안을 위해 초대된 사용자만 접근 가능합니다</small>
+        <div class="help-text">
+            인증 앱을 잃어버리셨나요? <a href="mailto:ahnhj1996@naver.com">관리자에게 문의</a>
         </div>
     </div>
 
@@ -163,7 +153,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
+    <!-- TOTP 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsSHA/3.2.0/sha.js"></script>
+
     <script src="firebase-config.js"></script>
-    <script src="auth.js"></script>
+    <script src="2fa-verify.js"></script>
 </body>
 </html>
