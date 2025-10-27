@@ -60,7 +60,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 0.9em;
-            min-width: 1800px;
+            min-width: 2000px;
         }
 
         .assets-table thead {
@@ -215,6 +215,7 @@
             <div class="header-section">
                 <h1>📊 전체 자산 로데이터</h1>
                 <div class="header-controls">
+                    <button onclick="openAddAssetModal()" class="add-asset-btn">➕ 자산 추가</button>
                     <button onclick="exportFullDataToExcel()" class="export-excel-btn">📥 Excel 다운로드</button>
                     <a href="index.html" class="back-btn">← 대시보드</a>
                 </div>
@@ -284,6 +285,116 @@
 
             <div id="tableContainer">
                 <div class="loading">데이터 로딩 중...</div>
+            </div>
+        </div>
+
+        <!-- 자산 추가/수정 모달 -->
+        <div id="assetModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeAssetModal()">&times;</span>
+                <h2 id="modalTitle">자산 추가</h2>
+                <form id="assetForm">
+                    <input type="hidden" id="editCategory">
+                    <input type="hidden" id="editIndex">
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetOwner">소유자 *</label>
+                            <select id="assetOwner" required>
+                                <option value="희준">희준</option>
+                                <option value="영은">영은</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="assetCountry">국가 *</label>
+                            <select id="assetCountry" required>
+                                <option value="한국">한국</option>
+                                <option value="미국">미국</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetInstitution">금융사</label>
+                            <input type="text" id="assetInstitution" placeholder="예: 신한은행">
+                        </div>
+                        <div class="form-col">
+                            <label for="assetAccountType">계좌유형</label>
+                            <select id="assetAccountType">
+                                <option value="">선택</option>
+                                <option value="예금">예금</option>
+                                <option value="적금">적금</option>
+                                <option value="증권">증권</option>
+                                <option value="펀드">펀드</option>
+                                <option value="연금">연금</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetType">자산유형 *</label>
+                            <select id="assetType" required>
+                                <option value="cash">현금/예금</option>
+                                <option value="stock">주식/ETF</option>
+                                <option value="crypto">채권/원자재</option>
+                                <option value="realEstate">가상화폐</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="assetLiquidity">유동구분 *</label>
+                            <select id="assetLiquidity" required>
+                                <option value="유동">유동</option>
+                                <option value="비유동">비유동</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label for="assetName">자산명 *</label>
+                    <input type="text" id="assetName" required placeholder="예: 삼성전자">
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetCurrency">통화 *</label>
+                            <select id="assetCurrency" required>
+                                <option value="KRW">원화 (KRW)</option>
+                                <option value="USD">달러 (USD)</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="assetTicker">Ticker</label>
+                            <input type="text" id="assetTicker" placeholder="예: 005930.KS">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="assetQuantity">보유량</label>
+                            <input type="number" id="assetQuantity" step="0.01" placeholder="주식 수량">
+                        </div>
+                        <div class="form-col">
+                            <label for="assetPurchasePrice">매입가</label>
+                            <input type="number" id="assetPurchasePrice" step="0.01" placeholder="주당 매입가">
+                        </div>
+                    </div>
+
+                    <label for="assetPurchaseAmount">투자원금</label>
+                    <input type="number" id="assetPurchaseAmount" step="0.01" placeholder="총 투자원금">
+
+                    <label for="assetAmount">현재 평가금액 *</label>
+                    <input type="number" id="assetAmount" required step="0.01" placeholder="현재 가치">
+
+                    <label for="assetNote">메모</label>
+                    <input type="text" id="assetNote" placeholder="추가 설명">
+
+                    <div class="form-buttons">
+                        <button type="submit">저장</button>
+                        <button type="button" onclick="closeAssetModal()">취소</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

@@ -4,6 +4,7 @@ let allAssets = [];
 let filteredAssets = [];
 let exchangeRate = 1350; // 기본 환율
 let currentUser = null;
+let rawAssetsData = null; // Firebase 원본 데이터 저장
 
 document.addEventListener('DOMContentLoaded', function() {
     initFirebase();
@@ -18,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUser = user;
         await loadAllData();
     });
+
+    // 폼 제출 이벤트
+    document.getElementById('assetForm').addEventListener('submit', handleAssetFormSubmit);
 });
 
 // 모든 데이터 로드
@@ -31,6 +35,9 @@ async function loadAllData() {
             crypto: [],
             realEstate: []
         };
+
+        // Firebase 원본 데이터 저장
+        rawAssetsData = assets;
 
         // 환율 로드 (최신)
         try {
@@ -54,7 +61,7 @@ async function loadAllData() {
         };
 
         Object.keys(assets).forEach(category => {
-            assets[category].forEach(asset => {
+            assets[category].forEach((asset, index) => {
                 // 원화 환산
                 const amountKRW = asset.currency === 'USD' ? asset.amount * exchangeRate : asset.amount;
                 const purchaseAmountKRW = asset.purchaseAmount ?
@@ -95,7 +102,11 @@ async function loadAllData() {
                     returnRate: returnRate,
 
                     // 비중 (나중에 계산)
-                    weight: 0
+                    weight: 0,
+
+                    // CRUD를 위한 원본 참조
+                    originalCategory: category,
+                    originalIndex: index
                 });
             });
         });
@@ -152,6 +163,7 @@ function renderTable() {
                     <th>평가손익</th>
                     <th>수익률</th>
                     <th>자산비중</th>
+                    <th>작업</th>
                 </tr>
             </thead>
             <tbody>
@@ -181,6 +193,10 @@ function renderTable() {
                 <td class="${profitClass}">${asset.profitLoss !== 0 ? (asset.profitLoss > 0 ? '+' : '') + '₩' + Math.round(asset.profitLoss).toLocaleString() : '-'}</td>
                 <td class="${profitClass}">${asset.returnRate !== 0 ? (asset.returnRate > 0 ? '+' : '') + asset.returnRate.toFixed(2) + '%' : '-'}</td>
                 <td>${asset.weight.toFixed(2)}%</td>
+                <td>
+                    <button onclick="openEditAssetModal('${asset.originalCategory}', ${asset.originalIndex})" class="edit-btn" style="padding: 5px 10px; margin-right: 5px;">수정</button>
+                    <button onclick="deleteAsset('${asset.originalCategory}', ${asset.originalIndex})" class="delete-btn" style="padding: 5px 10px;">삭제</button>
+                </td>
             </tr>
         `;
     });
@@ -326,4 +342,141 @@ function exportFullDataToExcel() {
     URL.revokeObjectURL(url);
 
     console.log('[EXPORT] Excel 다운로드 완료');
+}
+
+// ========== CRUD 기능 ==========
+
+// 자산 추가 모달 열기
+function openAddAssetModal() {
+    document.getElementById('modalTitle').textContent = '자산 추가';
+    document.getElementById('assetForm').reset();
+    document.getElementById('editCategory').value = '';
+    document.getElementById('editIndex').value = '';
+    document.getElementById('assetModal').style.display = 'block';
+}
+
+// 자산 수정 모달 열기
+function openEditAssetModal(category, index) {
+    // 인덱스가 유효한지 확인
+    if (!rawAssetsData[category] || !rawAssetsData[category][index]) {
+        alert('자산을 찾을 수 없습니다. 페이지를 새로고침 해주세요.');
+        return;
+    }
+
+    const asset = rawAssetsData[category][index];
+
+    document.getElementById('modalTitle').textContent = '자산 수정';
+    document.getElementById('editCategory').value = category;
+    document.getElementById('editIndex').value = index;
+
+    document.getElementById('assetOwner').value = asset.owner || '희준';
+    document.getElementById('assetCountry').value = asset.country || '한국';
+    document.getElementById('assetInstitution').value = asset.institution || '';
+    document.getElementById('assetAccountType').value = asset.accountType || '';
+    document.getElementById('assetType').value = category;
+    document.getElementById('assetLiquidity').value = asset.liquidity || '유동';
+    document.getElementById('assetName').value = asset.name;
+    document.getElementById('assetCurrency').value = asset.currency || 'KRW';
+    document.getElementById('assetTicker').value = asset.ticker || '';
+    document.getElementById('assetQuantity').value = asset.quantity || '';
+    document.getElementById('assetPurchasePrice').value = asset.purchasePrice || '';
+    document.getElementById('assetPurchaseAmount').value = asset.purchaseAmount || '';
+    document.getElementById('assetAmount').value = asset.amount;
+    document.getElementById('assetNote').value = asset.note || '';
+
+    document.getElementById('assetModal').style.display = 'block';
+}
+
+// 모달 닫기
+function closeAssetModal() {
+    document.getElementById('assetModal').style.display = 'none';
+}
+
+// 폼 제출 처리
+async function handleAssetFormSubmit(e) {
+    e.preventDefault();
+
+    const category = document.getElementById('editCategory').value || document.getElementById('assetType').value;
+    const editIndex = document.getElementById('editIndex').value;
+
+    const assetData = {
+        owner: document.getElementById('assetOwner').value,
+        country: document.getElementById('assetCountry').value,
+        institution: document.getElementById('assetInstitution').value.trim(),
+        accountType: document.getElementById('assetAccountType').value,
+        assetType: category,
+        liquidity: document.getElementById('assetLiquidity').value,
+        name: document.getElementById('assetName').value,
+        currency: document.getElementById('assetCurrency').value,
+        ticker: document.getElementById('assetTicker').value.trim(),
+        quantity: parseFloat(document.getElementById('assetQuantity').value) || null,
+        purchasePrice: parseFloat(document.getElementById('assetPurchasePrice').value) || null,
+        purchaseAmount: parseFloat(document.getElementById('assetPurchaseAmount').value) || null,
+        amount: parseFloat(document.getElementById('assetAmount').value),
+        note: document.getElementById('assetNote').value,
+        updatedAt: new Date().toISOString()
+    };
+
+    try {
+        if (editIndex === '') {
+            // 추가
+            rawAssetsData[category].push(assetData);
+            console.log('[ADD] 자산 추가:', assetData.name);
+        } else {
+            // 수정
+            rawAssetsData[category][parseInt(editIndex)] = assetData;
+            console.log('[EDIT] 자산 수정:', assetData.name);
+        }
+
+        // Firebase에 저장
+        await database.ref('assets').set(rawAssetsData);
+
+        alert('✅ 저장되었습니다!');
+        closeAssetModal();
+
+        // 데이터 다시 로드
+        await loadAllData();
+
+    } catch (error) {
+        console.error('[SAVE] 저장 실패:', error);
+        alert('저장에 실패했습니다.');
+    }
+}
+
+// 자산 삭제
+async function deleteAsset(category, index) {
+    // 인덱스가 유효한지 확인
+    if (!rawAssetsData[category] || !rawAssetsData[category][index]) {
+        alert('자산을 찾을 수 없습니다. 페이지를 새로고침 해주세요.');
+        return;
+    }
+
+    const asset = rawAssetsData[category][index];
+
+    if (!confirm(`"${asset.name}"을(를) 삭제하시겠습니까?`)) {
+        return;
+    }
+
+    try {
+        rawAssetsData[category].splice(index, 1);
+        await database.ref('assets').set(rawAssetsData);
+
+        console.log('[DELETE] 자산 삭제:', asset.name);
+        alert('✅ 삭제되었습니다!');
+
+        // 데이터 다시 로드
+        await loadAllData();
+
+    } catch (error) {
+        console.error('[DELETE] 삭제 실패:', error);
+        alert('삭제에 실패했습니다.');
+    }
+}
+
+// 모달 외부 클릭 시 닫기
+window.onclick = function(event) {
+    const modal = document.getElementById('assetModal');
+    if (event.target == modal) {
+        closeAssetModal();
+    }
 }

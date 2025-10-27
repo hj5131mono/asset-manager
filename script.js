@@ -624,11 +624,25 @@ function initBaseDate() {
 }
 
 // 기준일자 변경 처리
-function handleBaseDateChange(e) {
+async function handleBaseDateChange(e) {
     baseDate = e.target.value;
     console.log('[DATE] 기준일자 변경:', baseDate);
-    fetchExchangeRate(baseDate);
+
+    // 환율 조회 완료 대기
+    await fetchExchangeRate(baseDate);
+
+    // 환율이 변경되었으므로 대시보드 전체 갱신
     updateDashboard();
+
+    // 현재 활성화된 탭 새로고침
+    const activeTab = document.querySelector('.tab.active');
+    if (activeTab) {
+        const tabIndex = Array.from(document.querySelectorAll('.tab')).indexOf(activeTab);
+        const categories = ['cash', 'stock', 'crypto', 'realEstate'];
+        if (categories[tabIndex]) {
+            showTabContent(categories[tabIndex]);
+        }
+    }
 }
 
 // 환율 조회 (한국은행 API)
