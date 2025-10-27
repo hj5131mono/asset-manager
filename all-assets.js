@@ -39,15 +39,17 @@ async function loadAllData() {
         // Firebase 원본 데이터 저장
         rawAssetsData = assets;
 
-        // 환율 로드 (최신)
+        // 환율 로드 (실시간)
         try {
-            const response = await fetch('https://open.er-api.com/v6/latest/USD');
+            const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
             const data = await response.json();
             if (data.rates && data.rates.KRW) {
                 exchangeRate = data.rates.KRW;
+                console.log('[EXCHANGE] 환율 조회 성공:', exchangeRate);
             }
         } catch (error) {
             console.error('[EXCHANGE] 환율 조회 실패:', error);
+            exchangeRate = 1400; // 기본값
         }
 
         // 전체 자산을 하나의 배열로 변환

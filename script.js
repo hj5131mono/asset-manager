@@ -645,20 +645,13 @@ async function handleBaseDateChange(e) {
     }
 }
 
-// 환율 조회 (한국은행 API)
+// 환율 조회 (실시간 API)
 async function fetchExchangeRate(date) {
     try {
-        const apiKey = 'Z5CBL8XPHXY06Y3YBKT2';
+        console.log('[EXCHANGE] 환율 조회 요청:', date);
 
-        // 날짜 형식 변환 (YYYYMMDD)
-        const formattedDate = date.replace(/-/g, '');
-
-        // 한국은행 API: 일별 환율
-        // https://ecos.bok.or.kr/api/StatisticSearch/{인증키}/json/kr/1/1/036Y001/DD/{날짜}/{날짜}/0000001/?/?
-        const url = `https://ecos.bok.or.kr/api/StatisticSearch/${apiKey}/json/kr/1/1/036Y001/DD/${formattedDate}/${formattedDate}/0000001`;
-
-        console.log('[EXCHANGE] 환율 조회 요청:', formattedDate);
-
+        // Exchange Rate API - 무료, 실시간
+        const url = 'https://api.exchangerate-api.com/v4/latest/USD';
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -667,69 +660,24 @@ async function fetchExchangeRate(date) {
 
         const data = await response.json();
 
-        // 응답 확인
-        if (data.StatisticSearch && data.StatisticSearch.row && data.StatisticSearch.row.length > 0) {
-            const rate = parseFloat(data.StatisticSearch.row[0].DATA_VALUE);
+        if (data.rates && data.rates.KRW) {
+            const rate = data.rates.KRW;
             exchangeRates.USD = rate;
-            exchangeRates.lastUpdated = date;
+            exchangeRates.lastUpdated = data.date || date;
 
-            document.getElementById('exchangeRate').textContent = `$1 = ₩${Math.round(rate).toLocaleString()} (${date})`;
+            document.getElementById('exchangeRate').textContent = `$1 = ₩${Math.round(rate).toLocaleString()} (${data.date || date})`;
 
             console.log('[EXCHANGE] 환율 조회 성공:', rate);
         } else {
-            // 데이터 없음 (주말/공휴일) - 이전 영업일 찾기
-            console.log('[EXCHANGE] 해당일 데이터 없음, 이전 영업일 검색');
-            await fetchPreviousBusinessDayRate(date);
+            throw new Error('KRW 환율 데이터 없음');
         }
     } catch (error) {
         console.error('[EXCHANGE] 환율 조회 실패:', error);
-        exchangeRates.USD = 1350; // 기본값
+        exchangeRates.USD = 1400; // 기본값 업데이트
         document.getElementById('exchangeRate').textContent = `$1 = ₩${exchangeRates.USD.toLocaleString()} (기본값)`;
     }
 }
 
-// 이전 영업일 환율 조회 (주말/공휴일 처리)
-async function fetchPreviousBusinessDayRate(date) {
-    const apiKey = 'Z5CBL8XPHXY06Y3YBKT2';
-
-    // 최대 7일 전까지 검색
-    const targetDate = new Date(date);
-    const sevenDaysAgo = new Date(targetDate);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const startDate = sevenDaysAgo.toISOString().split('T')[0].replace(/-/g, '');
-    const endDate = date.replace(/-/g, '');
-
-    try {
-        const url = `https://ecos.bok.or.kr/api/StatisticSearch/${apiKey}/json/kr/1/10/036Y001/DD/${startDate}/${endDate}/0000001`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.StatisticSearch && data.StatisticSearch.row && data.StatisticSearch.row.length > 0) {
-            // 가장 최근 데이터 사용
-            const latestData = data.StatisticSearch.row[data.StatisticSearch.row.length - 1];
-            const rate = parseFloat(latestData.DATA_VALUE);
-            const actualDate = latestData.TIME;
-
-            exchangeRates.USD = rate;
-            exchangeRates.lastUpdated = actualDate;
-
-            // YYYYMMDD → YYYY-MM-DD 변환
-            const formattedActualDate = actualDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
-
-            document.getElementById('exchangeRate').textContent = `$1 = ₩${Math.round(rate).toLocaleString()} (${formattedActualDate})`;
-
-            console.log('[EXCHANGE] 이전 영업일 환율 사용:', formattedActualDate, rate);
-        } else {
-            throw new Error('이전 영업일 환율도 없음');
-        }
-    } catch (error) {
-        console.error('[EXCHANGE] 이전 영업일 조회 실패:', error);
-        exchangeRates.USD = 1350;
-        document.getElementById('exchangeRate').textContent = `$1 = ₩${exchangeRates.USD.toLocaleString()} (기본값)`;
-    }
-}
 
 // 소유자 필터
 function filterByOwner(owner) {
